@@ -1,0 +1,40 @@
+.stamps-page {
+  min-height: 100vh;
+}
+
+.page-subtitle {
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 2rem;
+  font-size: 1.1rem;
+}
+
+.stamps-section {
+  margin-bottom: 3rem;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 1.5rem;
+}
+
+.stamps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.1rem;
+}
+
+@media (max-width: 768px) {
+  .stamps-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

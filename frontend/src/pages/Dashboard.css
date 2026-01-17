@@ -1,0 +1,117 @@
+.dashboard-page {
+  min-height: 100vh;
+}
+
+.hero-section {
+  text-align: center;
+  padding: 4rem 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.hero-title {
+  font-size: 3rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+  color: white;
+}
+
+.hero-subtitle {
+  font-size: 1.25rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 1rem;
+}
+
+.hero-description {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.6;
+}
+
+.create-passport-section {
+  max-width: 600px;
+  margin: 4rem auto;
+  padding: 3rem;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+}
+
+.create-passport-section h2 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  color: white;
+}
+
+.create-passport-section p {
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.page-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: white;
+}
+
+.dashboard-grid {
+  display: grid;
+  gap: 2rem;
+}
+
+.dashboard-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.stamps-section {
+  margin-top: 2rem;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 1.5rem;
+}
+
+.stamps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.1rem;
+}
+
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 2rem;
+  }
+
+  .stamps-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+}
+

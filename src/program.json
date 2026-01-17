@@ -1,0 +1,7 @@
+{
+  "program": "passportapp.aleo",
+  "version": "0.1.0",
+  "description": "Decentralized identity verification service on Aleo",
+  "license": "MIT"
+}
+
