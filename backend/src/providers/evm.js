@@ -35,13 +35,13 @@ export const evmCallback = async (req, session) => {
   // Fetch wallet data from Etherscan
   const walletData = await fetchWalletData(address);
   
-  // Calculate score
-  const scoreResult = calculateEVMScore(walletData);
-  
   // Minimum balance requirement: 0.01 ETH
   if (walletData.balanceEth < 0.01) {
     throw new Error('Insufficient balance. Minimum 0.01 ETH required for verification.');
   }
+  
+  // Calculate score
+  const scoreResult = calculateEVMScore(walletData);
   
   // Generate commitment hash (PRIVACY: use standard format)
   const platformId = 2; // EVM = 2 (per spec)

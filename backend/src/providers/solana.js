@@ -49,7 +49,7 @@ export const solanaCallback = async (query, session) => {
     throw new Error('Insufficient balance. Minimum 0.1 SOL required for verification.');
   }
   
-  // Calculate score
+  // Calculate score (only if balance requirement met)
   const scoreResult = calculateSolanaScore(walletData);
   
   // Generate commitment hash (PRIVACY: use standard format)
