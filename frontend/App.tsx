@@ -14,6 +14,7 @@ import { Ecosystem } from './components/Ecosystem';
 import { StampSelectionModal, StampOption } from './src/components/StampSelectionModal';
 import { TransactionStatus as TransactionStatusComponent, TransactionStatusType as TxStatus } from './src/components/TransactionStatus';
 import { VerificationInstructions } from './src/components/VerificationInstructions';
+import { WalletRequiredModal } from './src/components/WalletRequiredModal';
 import { useVerification } from './src/hooks/useVerification';
 import { OAuthCallback } from './src/pages/OAuthCallback';
 import { VerifyCallback } from './src/pages/VerifyCallback';
@@ -824,6 +825,16 @@ const AppContent = () => {
     window.addEventListener('verification-updated', handleVerificationUpdate);
     return () => window.removeEventListener('verification-updated', handleVerificationUpdate);
   }, [refreshVerifications]);
+
+  // Listen for wallet modal open event from WalletRequiredModal
+  useEffect(() => {
+    const handleOpenWalletModal = () => {
+      setShowWalletModal(true);
+    };
+
+    window.addEventListener('open-wallet-modal', handleOpenWalletModal);
+    return () => window.removeEventListener('open-wallet-modal', handleOpenWalletModal);
+  }, []);
 
   const handleConnectWallet = async (adapterName: string) => {
     const adapter = wallets.find(w => w.adapter.name === adapterName)?.adapter;

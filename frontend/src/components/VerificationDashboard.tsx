@@ -12,8 +12,10 @@ import {
   MessageSquare, 
   AlertCircle
 } from 'lucide-react';
+import { useWallet } from '@demox-labs/aleo-wallet-adapter-react';
 import { useVerification } from '../hooks/useVerification';
 import { VERIFICATION_CONFIGS } from '../services/verificationService';
+import { WalletRequiredModal } from './WalletRequiredModal';
 
 export type VerificationStatus = 'idle' | 'in_progress' | 'verified' | 'failed';
 
@@ -36,8 +38,36 @@ export const VerificationDashboard: React.FC<VerificationDashboardProps> = ({
   passportId,
   onVerify
 }) => {
-  const { verifications, getVerification, verifying } = useVerification();
+  const { publicKey } = useWallet();
+  const { verifications, getVerification, verifying } = useVerification(publicKey || undefined);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [showWalletModal, setShowWalletModal] = useState(false);
+
+  const handleConnectWallet = () => {
+    setShowWalletModal(true);
+  };
+
+  if (!publicKey) {
+    return (
+      <>
+        <div className="p-8 border border-neutral-800 bg-surface text-center">
+          <p className="text-neutral-400 font-mono text-sm mb-4">Connect your wallet to view verification dashboard</p>
+          <button
+            onClick={handleConnectWallet}
+            className="px-6 py-3 bg-white text-black font-mono uppercase text-sm hover:bg-neutral-100 transition-colors"
+          >
+            Connect Wallet
+          </button>
+        </div>
+        <WalletRequiredModal
+          isOpen={showWalletModal}
+          onClose={() => setShowWalletModal(false)}
+          onConnect={handleConnectWallet}
+          action="view verification dashboard"
+        />
+      </>
+    );
+  }
 
   const providers: Array<{
     id: string;

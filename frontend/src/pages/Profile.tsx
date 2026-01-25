@@ -8,6 +8,7 @@ import { formatAddress } from "../utils/aleo";
 import { initializeSampleData } from "../utils/sampleData";
 import { getUser, onAuthStateChange, signInWithOAuth, getProfile } from "../lib/auth";
 import { MessageCircle } from "lucide-react";
+import { WalletRequiredModal } from "../components/WalletRequiredModal";
 import "./Profile.css";
 
 interface DiscordProfile {
@@ -20,12 +21,13 @@ interface DiscordProfile {
 }
 
 export const Profile = () => {
-    const { publicKey } = useWallet();
+    const { publicKey, connect, wallet, select, wallets } = useWallet();
     const { passport } = usePassport();
     const [stamps, setStamps] = useState<Stamp[]>([]);
     const [userStamps, setUserStamps] = useState<number[]>([]);
     const [discordProfile, setDiscordProfile] = useState<DiscordProfile | null>(null);
     const [loadingProfile, setLoadingProfile] = useState(false);
+    const [showWalletModal, setShowWalletModal] = useState(false);
 
     useEffect(() => {
         // Initialize sample data if needed
@@ -116,13 +118,25 @@ export const Profile = () => {
         }
     }, [publicKey]);
 
+    const handleConnectWallet = () => {
+        setShowWalletModal(true);
+    };
+
     if (!publicKey) {
         return (
-            <div className="profile-page fade-in">
-                <div className="profile-placeholder">
-                    <h2>Connect your wallet to view your profile</h2>
+            <>
+                <div className="profile-page fade-in">
+                    <div className="profile-placeholder">
+                        <h2>Connect your wallet to view your profile</h2>
+                    </div>
                 </div>
-            </div>
+                <WalletRequiredModal
+                    isOpen={showWalletModal}
+                    onClose={() => setShowWalletModal(false)}
+                    onConnect={handleConnectWallet}
+                    action="view your profile"
+                />
+            </>
         );
     }
 

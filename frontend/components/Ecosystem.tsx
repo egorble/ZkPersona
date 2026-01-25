@@ -1,6 +1,8 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ExternalLink, Shield, Vote, Wallet, Rocket, Users } from 'lucide-react';
+import { useWallet } from '@demox-labs/aleo-wallet-adapter-react';
+import { WalletRequiredModal } from '../src/components/WalletRequiredModal';
 import { Button } from './Button';
 
 const DAPPS = [
@@ -42,6 +44,41 @@ const DAPPS = [
 ];
 
 export const Ecosystem: React.FC<{ userScore: number }> = ({ userScore }) => {
+  const { publicKey } = useWallet();
+  const [showWalletModal, setShowWalletModal] = useState(false);
+
+  const handleConnectWallet = () => {
+    setShowWalletModal(true);
+  };
+
+  if (!publicKey) {
+    return (
+      <>
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="mb-10">
+            <h2 className="text-3xl font-bold tracking-tight text-white mb-2 font-mono">INTEGRATIONS</h2>
+            <p className="text-neutral-500 font-mono text-sm">Connect your identity to the decentralized web.</p>
+          </div>
+          <div className="border border-neutral-800 bg-surface p-12 text-center">
+            <p className="text-neutral-400 font-mono text-sm mb-4">Connect your wallet to view available integrations</p>
+            <button
+              onClick={handleConnectWallet}
+              className="px-6 py-3 bg-white text-black font-mono uppercase text-sm hover:bg-neutral-100 transition-colors"
+            >
+              Connect Wallet
+            </button>
+          </div>
+        </div>
+        <WalletRequiredModal
+          isOpen={showWalletModal}
+          onClose={() => setShowWalletModal(false)}
+          onConnect={handleConnectWallet}
+          action="view available integrations"
+        />
+      </>
+    );
+  }
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="mb-10">

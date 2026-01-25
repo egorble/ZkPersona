@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
+import { useWallet } from '@demox-labs/aleo-wallet-adapter-react';
+import { WalletRequiredModal } from './WalletRequiredModal';
 
 // Add keyframes for animations
 const style = document.createElement('style');
@@ -32,7 +34,25 @@ export const TransactionStatus: React.FC<TransactionStatusProps> = ({
   onConfirm,
   onError
 }) => {
+  const { publicKey } = useWallet();
+  const [showWalletModal, setShowWalletModal] = useState(false);
   const [dots, setDots] = useState('');
+
+  const handleConnectWallet = () => {
+    setShowWalletModal(true);
+  };
+
+  // If wallet is not connected, show wallet required modal instead
+  if (!publicKey) {
+    return (
+      <WalletRequiredModal
+        isOpen={true}
+        onClose={onError}
+        onConnect={handleConnectWallet}
+        action="view transaction status"
+      />
+    );
+  }
 
   useEffect(() => {
     if (status === 'waiting') {

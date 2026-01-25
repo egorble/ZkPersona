@@ -4,6 +4,7 @@ import { usePassport } from "../hooks/usePassport";
 import { useStamps } from "../hooks/useStamps";
 import { StampCard } from "../components/StampCard";
 import { SuccessModal } from "../components/SuccessModal";
+import { WalletRequiredModal } from "../components/WalletRequiredModal";
 import PageRoot from "../components/PageRoot";
 import { Header } from "../components/Header";
 import BodyWrapper from "../components/BodyWrapper";
@@ -22,13 +23,14 @@ export const Dashboard = () => {
     
     const [showSuccess, setShowSuccess] = useState(false);
     const [successTxId, setSuccessTxId] = useState<string | undefined>();
+    const [showWalletModal, setShowWalletModal] = useState(false);
 
     // Stamps are now fetched via useStamps hook from blockchain API
     // No need for localStorage loading here
 
     const handleCreatePassport = async () => {
         if (!publicKey) {
-            alert("Please connect your wallet first");
+            setShowWalletModal(true);
             return;
         }
 
@@ -43,27 +45,45 @@ export const Dashboard = () => {
         }
     };
 
+    const handleConnectWallet = () => {
+        setShowWalletModal(true);
+    };
+
     if (!publicKey) {
         return (
-            <PageRoot className="text-color-1">
-                <HeaderContentFooterGrid>
-                    <Header programId={PROGRAM_ID} />
-                    <BodyWrapper className="mt-4 md:mt-0 pt-12 md:pt-16 flex items-center justify-center min-h-[60vh]">
-                        <div className="text-center max-w-2xl">
-                            <h1 className="text-4xl md:text-6xl font-bold font-alt mb-4">
-                                Welcome to <span className="text-foreground-2">ZkPersona</span>
-                            </h1>
-                            <p className="text-lg text-color-3 mb-6">
-                                A decentralized identity verification system with full encryption through Aleo zero-knowledge proofs.
-                            </p>
-                            <p className="text-color-2">
-                                Connect your Leo Wallet to create your passport and start earning stamps that prove your humanity and identity.
-                            </p>
-                        </div>
-                    </BodyWrapper>
-                    <WelcomeFooter />
-                </HeaderContentFooterGrid>
-            </PageRoot>
+            <>
+                <PageRoot className="text-color-1">
+                    <HeaderContentFooterGrid>
+                        <Header programId={PROGRAM_ID} />
+                        <BodyWrapper className="mt-4 md:mt-0 pt-12 md:pt-16 flex items-center justify-center min-h-[60vh]">
+                            <div className="text-center max-w-2xl">
+                                <h1 className="text-4xl md:text-6xl font-bold font-alt mb-4">
+                                    Welcome to <span className="text-foreground-2">ZkPersona</span>
+                                </h1>
+                                <p className="text-lg text-color-3 mb-6">
+                                    A decentralized identity verification system with full encryption through Aleo zero-knowledge proofs.
+                                </p>
+                                <p className="text-color-2 mb-6">
+                                    Connect your Leo Wallet to create your passport and start earning stamps that prove your humanity and identity.
+                                </p>
+                                <button
+                                    onClick={handleConnectWallet}
+                                    className="px-6 py-3 bg-white text-black font-mono uppercase text-sm hover:bg-neutral-100 transition-colors"
+                                >
+                                    Connect Wallet
+                                </button>
+                            </div>
+                        </BodyWrapper>
+                        <WelcomeFooter />
+                    </HeaderContentFooterGrid>
+                </PageRoot>
+                <WalletRequiredModal
+                    isOpen={showWalletModal}
+                    onClose={() => setShowWalletModal(false)}
+                    onConnect={handleConnectWallet}
+                    action="access the dashboard"
+                />
+            </>
         );
     }
 

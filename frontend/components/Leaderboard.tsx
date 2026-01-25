@@ -1,6 +1,8 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Trophy, Medal, User, Zap } from 'lucide-react';
+import { useWallet } from '@demox-labs/aleo-wallet-adapter-react';
+import { WalletRequiredModal } from '../src/components/WalletRequiredModal';
 
 const MOCK_LEADERS = [
   { rank: 1, address: '0x821...3e1a', score: 98.5, stamps: 12, status: 'Pioneer' },
@@ -13,6 +15,41 @@ const MOCK_LEADERS = [
 ];
 
 export const Leaderboard: React.FC = () => {
+  const { publicKey } = useWallet();
+  const [showWalletModal, setShowWalletModal] = useState(false);
+
+  const handleConnectWallet = () => {
+    setShowWalletModal(true);
+  };
+
+  if (!publicKey) {
+    return (
+      <>
+        <div className="animate-in fade-in duration-500">
+          <div className="mb-10">
+            <h2 className="text-3xl font-bold tracking-tight text-white mb-2 font-mono">GLOBAL RANKING</h2>
+            <p className="text-neutral-500 font-mono text-sm">The most trusted biological entities in the network.</p>
+          </div>
+          <div className="border border-neutral-800 bg-surface p-12 text-center">
+            <p className="text-neutral-400 font-mono text-sm mb-4">Connect your wallet to view the leaderboard</p>
+            <button
+              onClick={handleConnectWallet}
+              className="px-6 py-3 bg-white text-black font-mono uppercase text-sm hover:bg-neutral-100 transition-colors"
+            >
+              Connect Wallet
+            </button>
+          </div>
+        </div>
+        <WalletRequiredModal
+          isOpen={showWalletModal}
+          onClose={() => setShowWalletModal(false)}
+          onConnect={handleConnectWallet}
+          action="view the leaderboard"
+        />
+      </>
+    );
+  }
+
   return (
     <div className="animate-in fade-in duration-500">
       <div className="mb-10">
