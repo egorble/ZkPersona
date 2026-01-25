@@ -75,20 +75,18 @@ export const googleCallback = async (query, session) => {
   // Calculate score
   const scoreResult = calculateGoogleScore(userInfo);
 
-  // Generate commitment hash
-  const metadataHash = crypto
-    .createHash('sha256')
-    .update(`${userInfo.sub}:${userInfo.email}:${Date.now()}`)
-    .digest('hex');
+  // Generate commitment hash (PRIVACY: use standard format)
+  const platformId = 3; // Google = 3 (per spec, adjust if needed)
+  const secretSalt = process.env.SECRET_SALT || 'zkpersona-secret-salt';
+  const commitmentInput = `${platformId}:${userInfo.sub}:${secretSalt}`;
+  const commitment = crypto.createHash('sha256').update(commitmentInput).digest('hex') + 'field';
 
   return {
     verified: true,
     provider: 'google',
-    userId: userInfo.sub,
-    email: userInfo.email,
+    commitment: commitment, // PRIVACY: Return commitment, not userId or email
     score: scoreResult.score,
     criteria: scoreResult.criteria,
-    metadataHash,
     maxScore: scoreResult.maxScore,
     accessToken: access_token // Will be hashed before storage
   };

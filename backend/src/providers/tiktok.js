@@ -155,22 +155,22 @@ export class TikTokProvider {
       const { calculateTikTokScore } = await import('../scoring/tiktok.js');
       const scoreResult = calculateTikTokScore(userInfo);
 
+      // Generate commitment for privacy
+      const platformId = 5; // TikTok = 5 (per spec)
+      const secretSalt = process.env.SECRET_SALT || 'zkpersona-secret-salt';
+      const commitmentInput = `${platformId}:${userId}:${secretSalt}`;
+      const commitment = crypto.createHash('sha256').update(commitmentInput).digest('hex') + 'field';
+      
       return {
         valid: true,
         record: { id: userId },
         errors: [],
-        userId: userId,
-        username: username,
+        commitment: commitment, // PRIVACY: Return commitment, not userId
         score: scoreResult.score,
         criteria: scoreResult.criteria,
         maxScore: scoreResult.maxScore,
         accessToken: accessToken,
-        profile: {
-          tiktokId: userId,
-          tiktokUsername: username,
-          displayName: userInfo.user.display_name,
-          avatarUrl: avatarUrl
-        }
+        // DO NOT return: userId, username, profile
       };
     } catch (error) {
       const errorMessage = error.message || 'Unknown error occurred';
@@ -206,12 +206,12 @@ export const tiktokCallback = async (query, session) => {
   return {
     verified: result.valid && result.score > 0,
     provider: 'tiktok',
-    userId: result.userId,
-    username: result.username,
+    commitment: result.commitment, // PRIVACY: Return commitment, not userId
     score: result.score,
     criteria: result.criteria,
     maxScore: result.maxScore,
-    profile: result.profile
+    accessToken: result.accessToken,
+    // DO NOT return: userId, username, profile
   };
 };
 

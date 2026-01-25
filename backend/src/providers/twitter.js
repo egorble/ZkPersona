@@ -208,14 +208,12 @@ export class TwitterProvider {
           username: userInfo.username,
         },
         errors: [],
-        // Additional data for our system
-        userId: userInfo.id,
-        username: userInfo.username,
+        // PRIVACY: Only return commitment, not userId or username
+        commitment: commitment,
         score: scoreResult.score,
         criteria: scoreResult.criteria,
-        commitment: commitment,
         maxScore: scoreResult.maxScore,
-        accessToken: accessToken // For potential future API calls
+        accessToken: accessToken // Will be hashed before storage
       };
     } catch (error) {
       const errorMessage = error.message || 'Unknown error occurred';
@@ -328,12 +326,10 @@ export const twitterCallback = async (query, session) => {
   return {
     verified: result.valid,
     provider: 'twitter',
-    userId: result.userId,
-    username: result.username,
+    // PRIVACY: Only return commitment, not userId or username
+    commitment: result.commitment,
     score: result.score,
     criteria: result.criteria,
-    commitment: result.commitment,
-    metadataHash: result.commitment, // Alias for backward compatibility
     maxScore: result.maxScore
   };
 };

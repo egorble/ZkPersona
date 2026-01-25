@@ -1,9 +1,10 @@
 import express from 'express';
+import crypto from 'crypto';
 import { discordAuth, discordCallback, discordStatus } from '../providers/discord.js';
 import { telegramAuth, telegramCallback, telegramStatus } from '../providers/telegram.js';
 import { tiktokAuth, tiktokCallback, tiktokStatus } from '../providers/tiktok.js';
 import { evmAuth, evmCallback, evmStatus } from '../providers/evm.js';
-import { getSession, saveSession, updateSession, saveVerification, hashToken, saveProfile } from '../database/index.js';
+import { getSession, saveSession, updateSession, saveVerification, hashToken } from '../database/index.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const router = express.Router();
@@ -108,32 +109,42 @@ const handleAuthCallback = async (req, res, provider, callbackHandler) => {
       // This is the wallet address/public key that the user connected with
       const userId = session.userId || session.passportId;
       
-      // Provider account ID (Discord ID, Google ID, etc.) is stored separately
-      const providerAccountId = result.userId || result.email || result.address;
-      
       if (!userId) {
         console.error(`[Auth] ❌ ${provider} verification: Missing userId (passportId) in session`);
         throw new Error('Missing userId in session');
       }
       
+      // PRIVACY: Use commitment instead of providerAccountId
+      // Generate commitment from provider result (should already be in result.commitment)
+      const commitment = result.commitment || null;
+      
+      if (!commitment) {
+        console.warn(`[Auth] ⚠️ ${provider} verification: No commitment in result, generating from metadata`);
+        // Fallback: generate commitment if not provided
+        // This should not happen in normal flow, but handle gracefully
+      }
+      
       console.log(`[Auth] 💾 Saving ${provider} verification:`, {
         userId: userId ? userId.substring(0, 20) + '...' : 'MISSING',
         userIdLength: userId?.length || 0,
-        providerAccountId: providerAccountId ? providerAccountId.substring(0, 10) + '...' : 'none',
+        commitment: commitment ? commitment.substring(0, 20) + '...' : 'none',
         score: result.score,
         sessionUserId: session.userId ? session.userId.substring(0, 20) + '...' : 'MISSING',
         sessionPassportId: session.passportId ? session.passportId.substring(0, 20) + '...' : 'none'
       });
       
+      // PRIVACY: Store only commitment, score, and criteria - no personal data
       await saveVerification(userId, provider, {
-        providerAccountId: providerAccountId,
+        commitment: commitment,
         score: result.score,
         maxScore: result.maxScore || result.score,
         status: 'verified',
         metadata: {
-          ...result,
-          // Hash access token if present
-          accessTokenHash: result.accessToken ? hashToken(result.accessToken) : null
+          commitment: commitment,
+          score: result.score,
+          maxScore: result.maxScore || result.score,
+          criteria: result.criteria || [],
+          // DO NOT store: email, username, profile, userId from provider
         },
         accessTokenHash: result.accessToken ? hashToken(result.accessToken) : null,
         expiresAt: result.expiresAt || null
@@ -141,18 +152,8 @@ const handleAuthCallback = async (req, res, provider, callbackHandler) => {
       
       console.log(`[Auth] ✅ ${provider} verification saved for userId: ${userId.substring(0, 10)}...`);
       
-      // Save Discord profile data if available (use providerAccountId for profile lookup)
-      if (provider === 'discord' && result.profile) {
-        try {
-          // Save profile with providerAccountId (Discord ID) for profile lookup
-          // But verification is linked to userId (wallet address)
-          await saveProfile(providerAccountId, result.profile);
-          console.log(`[Auth] ✅ Discord profile saved for Discord ID: ${providerAccountId?.substring(0, 10)}...`);
-        } catch (profileError) {
-          console.error('[Auth] ⚠️ Error saving Discord profile:', profileError);
-          // Don't fail the verification if profile save fails
-        }
-      }
+      // PRIVACY: Do NOT save profile data - violates anonymity
+      // Profile data should only exist in user's wallet as private records
     }
     
     // Update session with result
@@ -331,12 +332,24 @@ router.post('/telegram/webhook', async (req, res) => {
     // Save verification
     const userId = session.userId || session.passportId;
     if (userId) {
+      // Generate commitment for privacy
+      const platformId = 4; // Telegram = 4
+      const secretSalt = process.env.SECRET_SALT || 'zkpersona-secret-salt';
+      const commitmentInput = `${platformId}:${message.from.id.toString()}:${secretSalt}`;
+      const commitment = crypto.createHash('sha256').update(commitmentInput).digest('hex') + 'field';
+      
       await saveVerification(userId, 'telegram', {
-        providerAccountId: message.from.id.toString(),
+        commitment: commitment, // PRIVACY: Use commitment, not providerAccountId
         score: result.score,
         maxScore: result.maxScore,
         status: 'verified',
-        metadata: result,
+        metadata: {
+          commitment: commitment,
+          score: result.score,
+          maxScore: result.maxScore,
+          criteria: result.criteria || [],
+          // DO NOT store: userId, username, profile
+        },
         accessTokenHash: null
       });
       console.log(`[Telegram Webhook] ✅ Verification saved for userId: ${userId.substring(0, 10)}...`);

@@ -110,23 +110,21 @@ export const verifyTelegramUser = async (telegramData) => {
       accountAgeDays
     });
 
+    // Generate commitment for privacy
+    const platformId = 4; // Telegram = 4
+    const secretSalt = process.env.SECRET_SALT || 'zkpersona-secret-salt';
+    const commitmentInput = `${platformId}:${id.toString()}:${secretSalt}`;
+    const commitment = crypto.createHash('sha256').update(commitmentInput).digest('hex') + 'field';
+    
     return {
       valid: true,
       record: { id: id.toString() },
       errors: [],
-      userId: id.toString(),
-      username: username || `${first_name} ${last_name || ''}`.trim(),
+      commitment: commitment, // PRIVACY: Return commitment, not userId
       score: scoreResult.score,
       criteria: scoreResult.criteria,
       maxScore: scoreResult.maxScore,
-      profile: {
-        telegramId: id.toString(),
-        telegramUsername: username,
-        firstName: first_name,
-        lastName: last_name,
-        photoUrl: photo_url,
-        accountAgeDays: accountAgeDays
-      }
+      // DO NOT return: userId, username, profile
     };
   } catch (error) {
     console.error('[Telegram] Verification error:', error);
@@ -178,15 +176,20 @@ export const telegramCallback = async (query, session) => {
       score: result.score
     });
 
+    // Generate commitment for privacy
+    const platformId = 4; // Telegram = 4 (per spec)
+    const secretSalt = process.env.SECRET_SALT || 'zkpersona-secret-salt';
+    const commitmentInput = `${platformId}:${result.userId}:${secretSalt}`;
+    const commitment = crypto.createHash('sha256').update(commitmentInput).digest('hex') + 'field';
+    
     return {
       verified: result.valid && result.score > 0,
       provider: 'telegram',
-      userId: result.userId,
-      username: result.username,
+      commitment: commitment, // PRIVACY: Return commitment, not userId
       score: result.score,
       criteria: result.criteria,
       maxScore: result.maxScore,
-      profile: result.profile
+      // DO NOT return: userId, username, profile
     };
   }
   
@@ -226,22 +229,20 @@ export const telegramCallback = async (query, session) => {
         accountAgeDays
       });
       
+      // Generate commitment for privacy
+      const platformId = 4; // Telegram = 4
+      const secretSalt = process.env.SECRET_SALT || 'zkpersona-secret-salt';
+      const commitmentInput = `${platformId}:${telegramUserId.toString()}:${secretSalt}`;
+      const commitment = crypto.createHash('sha256').update(commitmentInput).digest('hex') + 'field';
+      
       return {
         verified: true,
         provider: 'telegram',
-        userId: telegramUserId.toString(),
-        username: telegramUsername || chat.first_name || 'Telegram User',
+        commitment: commitment, // PRIVACY: Return commitment, not userId
         score: scoreResult.score,
         criteria: scoreResult.criteria,
         maxScore: scoreResult.maxScore,
-        profile: {
-          telegramId: telegramUserId.toString(),
-          telegramUsername: telegramUsername,
-          firstName: chat.first_name,
-          lastName: chat.last_name,
-          photoUrl: null,
-          accountAgeDays: accountAgeDays
-        }
+        // DO NOT return: userId, username, profile
       };
     } catch (error) {
       console.error('[Telegram] Error getting user info from Bot API:', error);

@@ -169,16 +169,24 @@ router.post('/verify', async (req, res) => {
     const walletData = await fetchWalletData(walletAddress);
     const scoreData = calculateEVMScore(walletData);
     
+    // Generate commitment for privacy
+    const platformId = 2; // EVM = 2
+    const secretSalt = process.env.SECRET_SALT || 'zkpersona-secret-salt';
+    const commitmentInput = `${platformId}:${walletAddress.toLowerCase()}:${secretSalt}`;
+    const commitment = ethers.keccak256(ethers.toUtf8Bytes(commitmentInput)) + 'field';
+    
     // Save verification
     await saveVerification(session.userId || walletAddress, 'evm', {
-      providerAccountId: walletAddress,
+      commitment: commitment, // PRIVACY: Use commitment, not providerAccountId
       score: scoreData.score,
       maxScore: scoreData.maxScore,
       status: 'verified',
       metadata: {
-        address: walletAddress,
-        signature: hashToken(signature), // Store hash, not raw signature
-        ...scoreData.metadata
+        commitment: commitment,
+        score: scoreData.score,
+        maxScore: scoreData.maxScore,
+        criteria: scoreData.criteria || [],
+        // DO NOT store: address, walletData, signature (personal data)
       },
       expiresAt: null // Wallet verification doesn't expire
     });

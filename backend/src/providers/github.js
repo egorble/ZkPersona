@@ -201,7 +201,7 @@ export class GitHubProvider {
       // Step 6: Generate commitment hash
       const commitment = this.generateCommitment(userInfo.id.toString());
 
-      // Step 7: Return verified result
+      // Step 7: Return verified result (PRIVACY: no personal data)
       return {
         valid: true,
         record: {
@@ -209,12 +209,10 @@ export class GitHubProvider {
           login: userInfo.login
         },
         errors: [],
-        // Additional data for our system
-        userId: userInfo.id.toString(),
-        username: userInfo.login,
+        // PRIVACY: Only return commitment, not userId or username
+        commitment: commitment,
         score: scoreResult.score,
         criteria: scoreResult.criteria,
-        commitment: commitment,
         maxScore: scoreResult.maxScore,
         accessToken: accessToken
       };
@@ -317,12 +315,10 @@ export const githubCallback = async (query, session) => {
   return {
     verified: result.valid,
     provider: 'github',
-    userId: result.userId,
-    username: result.username,
+    // PRIVACY: Only return commitment, not userId or username
+    commitment: result.commitment,
     score: result.score,
     criteria: result.criteria,
-    commitment: result.commitment,
-    metadataHash: result.commitment, // Alias for backward compatibility
     maxScore: result.maxScore
   };
 };

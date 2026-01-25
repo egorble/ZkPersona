@@ -183,7 +183,7 @@ setInterval(() => {
  */
 export const saveVerification = async (userId, provider, data) => {
   const {
-    providerAccountId,
+    commitment, // Use commitment instead of providerAccountId
     score = 0,
     maxScore = 0,
     status = 'verified',
@@ -192,14 +192,24 @@ export const saveVerification = async (userId, provider, data) => {
     expiresAt = null
   } = data;
   
+  // PRIVACY: Only store commitment, score, and minimal metadata (no personal data)
+  // Remove any personal identifiers from metadata
+  const sanitizedMetadata = {
+    commitment: commitment || null,
+    score,
+    maxScore,
+    criteria: metadata.criteria || [],
+    // Remove: email, username, profile, userId, etc.
+  };
+  
   const verificationData = {
     userId,
     provider,
-    providerAccountId: providerAccountId || null,
+    commitment: commitment || null, // Store commitment instead of providerAccountId
     score,
     maxScore,
     status,
-    metadata,
+    metadata: sanitizedMetadata,
     accessTokenHash,
     verifiedAt: new Date(),
     expiresAt: expiresAt ? new Date(expiresAt) : null
@@ -224,8 +234,8 @@ export const saveVerification = async (userId, provider, data) => {
           expires_at = EXCLUDED.expires_at,
           updated_at = NOW()
       `, [
-        userId, provider, providerAccountId, score, maxScore, status,
-        JSON.stringify(metadata), accessTokenHash, verificationData.verifiedAt, verificationData.expiresAt
+        userId, provider, commitment || null, score, maxScore, status,
+        JSON.stringify(sanitizedMetadata), accessTokenHash, verificationData.verifiedAt, verificationData.expiresAt
       ]);
     } catch (error) {
       console.error('[Database] Error saving verification:', error);
@@ -262,9 +272,10 @@ export const getVerification = async (userId, provider) => {
     
     const row = result.rows[0];
     return {
+      // PRIVACY: Return only commitment, not providerAccountId
       userId: row.user_id,
       provider: row.provider,
-      providerAccountId: row.provider_account_id,
+      commitment: row.provider_account_id, // Reuse column for commitment (backward compatibility)
       score: row.score,
       maxScore: row.max_score,
       status: row.status,
@@ -309,10 +320,11 @@ export const getUserVerifications = async (userId) => {
         console.warn('[Database] Failed to parse metadata:', e);
       }
       
+      // PRIVACY: Return only commitment, not providerAccountId
       return {
       userId: row.user_id,
       provider: row.provider,
-      providerAccountId: row.provider_account_id,
+      commitment: row.provider_account_id, // Reuse column for commitment
       score: row.score,
       maxScore: row.max_score,
       status: row.status,

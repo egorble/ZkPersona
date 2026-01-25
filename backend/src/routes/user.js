@@ -1,7 +1,7 @@
 // User score and verification summary endpoints
 
 import express from 'express';
-import { getUserScore, getUserVerifications, getProfile, saveProfile, deleteVerification } from '../database/index.js';
+import { getUserScore, getUserVerifications, deleteVerification } from '../database/index.js';
 
 const router = express.Router();
 
@@ -78,63 +78,8 @@ router.get('/:id/verifications', async (req, res) => {
   }
 });
 
-/**
- * GET /user/:id/profile
- * Get user profile (Discord, etc.)
- */
-router.get('/:id/profile', async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const profile = await getProfile(id);
-    
-    if (!profile) {
-      return res.status(404).json({
-        error: 'Profile not found'
-      });
-    }
-    
-    res.json({
-      userId: id,
-      profile
-    });
-  } catch (error) {
-    console.error('[User] Get profile error:', error);
-    res.status(500).json({
-      error: error.message
-    });
-  }
-});
-
-/**
- * POST /user/:id/profile
- * Update user profile (Propel-like interface)
- */
-router.post('/:id/profile', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { discordNickname, discordAvatarUrl } = req.body;
-    
-    await saveProfile(id, {
-      discordId: id,
-      discordUsername: discordNickname,
-      discordNickname: discordNickname,
-      discordAvatarUrl: discordAvatarUrl
-    });
-    
-    const profile = await getProfile(id);
-    
-    res.json({
-      userId: id,
-      profile
-    });
-  } catch (error) {
-    console.error('[User] Update profile error:', error);
-    res.status(500).json({
-      error: error.message
-    });
-  }
-});
+// PRIVACY: Profile endpoints removed - profile data should only exist in user's wallet as private records
+// Profile data storage violates anonymity principles
 
 /**
  * DELETE /user/:id/verifications/:provider

@@ -348,30 +348,20 @@ export class DiscordProvider {
       const discordDiscriminator = userInfo.user.discriminator || userFullInfo.discriminator || null;
       const discordNickname = userFullInfo.global_name || userFullInfo.username || discordUsername;
       
-      // Step 10: Return verified result with profile data
+      // Step 10: Return verified result (PRIVACY: no profile data)
       return {
         valid: true,
         record: {
           id: userId
         },
         errors: [],
-        // Additional data for our system
-        userId: userId,
-        username: discordUsername,
+        // PRIVACY: Only return commitment, not userId or username
+        commitment: commitment,
         score: scoreResult.score,
         criteria: scoreResult.criteria,
-        commitment: commitment,
         maxScore: scoreResult.maxScore,
         accessToken: accessToken,
-        // Profile data
-        profile: {
-          discordId: userId,
-          discordUsername: discordUsername,
-          discordDiscriminator: discordDiscriminator,
-          discordNickname: discordNickname,
-          discordAvatarUrl: discordAvatarUrl,
-          discordProfileLink: `https://discord.com/users/${userId}`
-        }
+        // DO NOT return profile data - violates anonymity
       };
     } catch (error) {
       const errorMessage = error.message || 'Unknown error occurred';

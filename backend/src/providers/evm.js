@@ -38,20 +38,20 @@ export const evmCallback = async (req, session) => {
   // Calculate score
   const scoreResult = calculateEVMScore(walletData);
   
-  // Generate commitment hash
-  const metadataHash = ethers.keccak256(
-    ethers.toUtf8Bytes(`${address}:${walletData.balance}:${walletData.txCount}:${Date.now()}`)
-  );
+  // Generate commitment hash (PRIVACY: use standard format)
+  const platformId = 2; // EVM = 2 (per spec)
+  const secretSalt = process.env.SECRET_SALT || 'zkpersona-secret-salt';
+  const commitmentInput = `${platformId}:${address.toLowerCase()}:${secretSalt}`;
+  const commitment = ethers.keccak256(ethers.toUtf8Bytes(commitmentInput)) + 'field';
 
   return {
     verified: true,
     provider: 'evm',
-    address: address.toLowerCase(),
+    commitment: commitment, // PRIVACY: Return commitment, not address
     score: scoreResult.score,
     criteria: scoreResult.criteria,
-    metadataHash,
     maxScore: scoreResult.maxScore,
-    data: walletData
+    // DO NOT return: address, walletData (personal data)
   };
 };
 

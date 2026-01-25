@@ -115,10 +115,10 @@ router.get('/:userId/:provider', async (req, res) => {
       status: verification.status,
       verifiedAt: verification.verifiedAt,
       expiresAt: verification.expiresAt,
-      // Don't expose sensitive metadata
+      // PRIVACY: Don't expose personal data
       metadata: verification.metadata ? {
-        // Only include safe fields
-        accountId: verification.providerAccountId
+        // Only include commitment, no personal identifiers
+        commitment: verification.commitment || verification.metadata.commitment
       } : null
     });
   } catch (error) {
