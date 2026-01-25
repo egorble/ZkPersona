@@ -386,6 +386,7 @@ const Dashboard = ({ user, onVerifyStamp }: { user: UserState; onVerifyStamp: (i
   const [selectedStamps, setSelectedStamps] = useState<string[]>([]);
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [transactionStatus, setTransactionStatus] = useState<TxStatus>('waiting');
+  const [transactionFunctionName, setTransactionFunctionName] = useState<string | undefined>(undefined);
 
   // Map Aleo stamps to UI stamps
   useEffect(() => {
@@ -684,6 +685,7 @@ const Dashboard = ({ user, onVerifyStamp }: { user: UserState; onVerifyStamp: (i
           status={transactionStatus}
           onConfirm={handleTransactionConfirmed}
           onError={handleTransactionError}
+          functionName={transactionFunctionName}
         />
       )}
 

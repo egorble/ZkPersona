@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Loader2, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
 import { useWallet } from '@demox-labs/aleo-wallet-adapter-react';
 import { WalletRequiredModal } from './WalletRequiredModal';
+import { fetchTransactionDetails, getFunctionDisplayName } from '../utils/explorerAPI';
 
 // Add keyframes for animations
 const style = document.createElement('style');
@@ -26,17 +27,20 @@ interface TransactionStatusProps {
   status: TransactionStatusType;
   onConfirm: () => void;
   onError: () => void;
+  functionName?: string; // Optional: function name to display
 }
 
 export const TransactionStatus: React.FC<TransactionStatusProps> = ({
   txId,
   status,
   onConfirm,
-  onError
+  onError,
+  functionName: propFunctionName
 }) => {
   const { publicKey } = useWallet();
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [dots, setDots] = useState('');
+  const [transactionFunctionName, setTransactionFunctionName] = useState<string | null>(null);
 
   const handleConnectWallet = () => {
     setShowWalletModal(true);
@@ -67,6 +71,28 @@ export const TransactionStatus: React.FC<TransactionStatusProps> = ({
   }, [status]);
 
   const [isClosing, setIsClosing] = useState(false);
+
+  // Fetch transaction details to get function name
+  useEffect(() => {
+    if (txId && !propFunctionName) {
+      fetchTransactionDetails(txId)
+        .then(txDetails => {
+          if (txDetails?.function || txDetails?.functionName) {
+            setTransactionFunctionName(txDetails.function || txDetails.functionName || null);
+          }
+        })
+        .catch(error => {
+          console.debug('[TransactionStatus] Could not fetch transaction details:', error);
+          // Silent fail - not critical
+        });
+    } else if (propFunctionName) {
+      setTransactionFunctionName(propFunctionName);
+    }
+  }, [txId, propFunctionName]);
+
+  const displayFunctionName = transactionFunctionName 
+    ? getFunctionDisplayName(transactionFunctionName)
+    : null;
 
   useEffect(() => {
     // Close immediately after signing (pending status)
@@ -151,6 +177,11 @@ export const TransactionStatus: React.FC<TransactionStatusProps> = ({
               <h3 className="text-xl font-bold font-mono uppercase text-white mb-2">
                 Transaction Signed!
               </h3>
+              {displayFunctionName && (
+                <p className="text-neutral-300 text-xs font-mono mb-2">
+                  Function: {displayFunctionName}
+                </p>
+              )}
               <p className="text-neutral-400 text-sm font-mono mb-4">
                 Your transaction has been signed and submitted to the blockchain
               </p>
@@ -179,8 +210,15 @@ export const TransactionStatus: React.FC<TransactionStatusProps> = ({
               <h3 className="text-xl font-bold font-mono uppercase text-white mb-2">
                 Transaction Confirmed!
               </h3>
+              {displayFunctionName && (
+                <p className="text-neutral-300 text-xs font-mono mb-2">
+                  Function: {displayFunctionName}
+                </p>
+              )}
               <p className="text-neutral-400 text-sm font-mono mb-4">
-                Your passport has been created successfully
+                {displayFunctionName === 'Create Passport' 
+                  ? 'Your passport has been created successfully'
+                  : 'Transaction confirmed successfully'}
               </p>
               {txId && (
                 <a
