@@ -76,6 +76,7 @@ export const VerificationDashboard: React.FC<VerificationDashboardProps> = ({
     category: 'onchain' | 'social' | 'other';
   }> = [
     { id: 'ethereum', name: 'EVM Wallet', icon: <Wallet size={20} />, category: 'onchain' },
+    { id: 'solana', name: 'Solana Wallet', icon: <Wallet size={20} />, category: 'onchain' },
     { id: 'discord', name: 'Discord', icon: <MessageSquare size={20} />, category: 'social' },
     { id: 'telegram', name: 'Telegram', icon: <MessageCircle size={20} />, category: 'social' },
     { id: 'tiktok', name: 'TikTok', icon: <Video size={20} />, category: 'social' },

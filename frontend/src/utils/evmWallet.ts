@@ -25,8 +25,9 @@ export const connectEVMWallet = async (): Promise<EVMWalletInfo | null> => {
   }
 
   if (!ethereum) {
-    // Try to open WalletConnect or show instructions
-    throw new Error('No EVM wallet found. Please install MetaMask or connect via WalletConnect.');
+    // Check for WalletConnect in localStorage or try to initialize
+    // For now, show helpful error message
+    throw new Error('No EVM wallet found. Please install MetaMask, Coinbase Wallet, or connect via WalletConnect. Make sure your wallet extension is enabled.');
   }
 
   try {

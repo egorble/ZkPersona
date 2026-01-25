@@ -19,6 +19,7 @@ import { useVerification } from './src/hooks/useVerification';
 import { OAuthCallback } from './src/pages/OAuthCallback';
 import { VerifyCallback } from './src/pages/VerifyCallback';
 import { VerifyEVM } from './src/pages/VerifyEVM';
+import { VerifySolana } from './src/pages/VerifySolana';
 import { 
   ShieldCheck, 
   Bitcoin, 
@@ -87,6 +88,15 @@ const INITIAL_STAMPS: Stamp[] = [
     scoreWeight: 10,
     status: StampStatus.LOCKED,
     provider: 'tiktok'
+  },
+  {
+    id: 'solana',
+    title: 'Solana Wallet',
+    description: 'Verify your Solana wallet with balance and transaction history. Minimum 0.1 SOL balance required.',
+    icon: <Wallet size={24} />,
+    scoreWeight: 25,
+    status: StampStatus.LOCKED,
+    provider: 'solana'
   }
 ];
 
@@ -630,7 +640,7 @@ const Dashboard = ({ user, onVerifyStamp }: { user: UserState; onVerifyStamp: (i
                       return ['discord', 'telegram', 'tiktok'].includes(stamp.provider);
                     }
                     if (category === 'onchain') {
-                      return ['ethereum', 'eth_wallet'].includes(stamp.provider);
+                      return ['ethereum', 'eth_wallet', 'solana'].includes(stamp.provider);
                     }
                     if (category === 'other') {
                       return ['gemini', 'face_scan', 'steam'].includes(stamp.provider);
@@ -1030,6 +1040,7 @@ const App = () => {
           <Route path="/callback" element={<OAuthCallback />} />
           <Route path="/verify/callback" element={<VerifyCallback />} />
           <Route path="/verify/evm" element={<VerifyEVM />} />
+          <Route path="/verify/solana" element={<VerifySolana />} />
           <Route path="*" element={<AppContent />} />
         </Routes>
       </Router>

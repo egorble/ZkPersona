@@ -38,6 +38,11 @@ export const evmCallback = async (req, session) => {
   // Calculate score
   const scoreResult = calculateEVMScore(walletData);
   
+  // Minimum balance requirement: 0.01 ETH
+  if (walletData.balanceEth < 0.01) {
+    throw new Error('Insufficient balance. Minimum 0.01 ETH required for verification.');
+  }
+  
   // Generate commitment hash (PRIVACY: use standard format)
   const platformId = 2; // EVM = 2 (per spec)
   const secretSalt = process.env.SECRET_SALT || 'zkpersona-secret-salt';

@@ -250,6 +250,9 @@ export const useVerification = (walletAddress?: string) => {
           if (!credentials.address) throw new Error('Wallet address required');
           result = await verifyEthereum(credentials.address, credentials.signature);
           break;
+        case 'solana':
+          // Solana verification is handled via backend wallet flow
+          throw new Error('Solana verification must be done through backend wallet flow');
         default:
           throw new Error(`Unknown provider: ${providerId}`);
       }

@@ -82,6 +82,37 @@ export const submitEVMSignature = async (
 };
 
 /**
+ * Submit Solana wallet signature to backend
+ */
+export const submitSolanaSignature = async (
+  sessionId: string,
+  address: string,
+  signature: string,
+  message: string
+): Promise<void> => {
+  const response = await fetch(`${BACKEND_URL}/auth/solana/callback`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      address,
+      signature,
+      message,
+      state: sessionId
+    })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to verify Solana wallet');
+  }
+
+  // Backend processes and stores result in session
+  // Frontend will poll status
+};
+
+/**
  * Get user profile (Discord, etc.)
  */
 export const getUserProfile = async (userId: string): Promise<any | null> => {

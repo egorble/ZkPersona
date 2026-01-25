@@ -752,6 +752,22 @@ export const VERIFICATION_CONFIGS: Record<string, VerificationConfig> = {
       // TikTok verification is handled via backend OAuth
       throw new Error('TikTok verification must be done through backend OAuth flow');
     }
+  },
+  solana: {
+    provider: 'Solana',
+    maxScore: 35,
+    criteria: [
+      { condition: 'Balance ≥ 1.0 SOL', points: 10, description: 'Wallet has sufficient balance' },
+      { condition: 'Balance ≥ 0.1 SOL', points: 5, description: 'Wallet has minimum balance' },
+      { condition: '≥ 100 transactions', points: 10, description: 'Active wallet with transaction history' },
+      { condition: '≥ 20 transactions', points: 5, description: 'Has transaction history' },
+      { condition: 'Wallet age ≥ 1 year', points: 10, description: 'Long-term wallet user' },
+      { condition: 'Recent activity (last 30 days)', points: 5, description: 'Wallet has recent transactions' }
+    ],
+    checkFunction: async () => {
+      // Solana verification is handled via backend
+      throw new Error('Solana verification must be done through backend wallet flow');
+    }
   }
 };
 

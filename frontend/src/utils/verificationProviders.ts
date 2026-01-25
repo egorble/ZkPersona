@@ -159,12 +159,33 @@ export const getVerificationInstructions = (providerId: string): VerificationIns
           },
           {
             title: '2. Automatic Analysis',
-            description: 'We will automatically analyze your wallet: balance, transaction count, and wallet age.',
+            description: 'We will automatically analyze your wallet: balance (min 0.01 ETH), transaction count, and wallet age.',
           },
           {
             title: '3. Get Score',
-            description: 'Receive up to 35 points based on your wallet activity and history.',
+            description: 'Receive up to 35 points based on your wallet activity, balance, and history.',
             link: 'https://ethereum.org/en/developers/docs/'
+          }
+        ]
+      };
+
+    case 'solana':
+      return {
+        provider: 'Solana Wallet',
+        providerId: 'solana',
+        steps: [
+          {
+            title: '1. Connect Solana Wallet',
+            description: 'Click "Start Verification" to connect your Solana wallet. We support Phantom, Solflare, and other Solana wallets.',
+          },
+          {
+            title: '2. Automatic Analysis',
+            description: 'We will automatically analyze your wallet: balance (min 0.1 SOL), transaction count, and wallet age.',
+          },
+          {
+            title: '3. Get Score',
+            description: 'Receive up to 35 points based on your wallet activity, balance, and history.',
+            link: 'https://docs.solana.com/'
           }
         ]
       };

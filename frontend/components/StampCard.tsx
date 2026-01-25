@@ -45,8 +45,8 @@ export const StampCard: React.FC<StampCardProps> = ({ stamp, onVerify, onOpenVer
       hasCallback: !!onOpenVerificationInstructions
     });
     
-    // For OAuth providers and EVM, open VerificationInstructions modal
-    const oauthProviders = ['google', 'twitter', 'github', 'discord', 'telegram', 'tiktok', 'ethereum', 'eth_wallet', 'steam'];
+    // For OAuth providers and EVM/Solana, open VerificationInstructions modal
+    const oauthProviders = ['google', 'twitter', 'github', 'discord', 'telegram', 'tiktok', 'ethereum', 'eth_wallet', 'solana', 'steam'];
     if (oauthProviders.includes(providerId)) {
       // If callback provided, open VerificationInstructions with this stamp
       if (onOpenVerificationInstructions) {

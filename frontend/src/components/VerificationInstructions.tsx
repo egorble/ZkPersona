@@ -123,6 +123,25 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
       return;
     }
 
+    // Handle Solana Wallet (via backend)
+    if (stampId === 'solana') {
+      setConnectingWallet(stampId);
+      try {
+        // Start backend verification flow - redirects to /verify/solana
+        const { startVerification } = await import('../utils/backendAPI');
+        
+        console.log(`[Solana] 🔐 Starting Solana verification via backend...`);
+        startVerification('solana', passportId);
+        // Note: startVerification redirects, so code below won't execute
+        return;
+      } catch (error) {
+        console.error('[Solana] Error starting verification:', error);
+        alert('Failed to start verification. Please try again.');
+        setConnectingWallet(null);
+      }
+      return;
+    }
+
     // Handle OAuth providers (Discord, Telegram, TikTok) - All via backend
     if (['discord', 'telegram', 'tiktok'].includes(stampId)) {
       try {
@@ -213,6 +232,7 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
               const verification = getVerification(verificationId);
               const isVerifying = verifying === verificationId;
               const isEVM = stampId === 'ethereum' || stampId === 'eth_wallet';
+              const isSolana = stampId === 'solana';
               const config = VERIFICATION_CONFIGS[verificationId] || VERIFICATION_CONFIGS[stampId];
               
               const isConnected = verification?.verified && verification.status === 'connected';
@@ -232,8 +252,8 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
                       <h3 className="text-xl font-bold font-mono uppercase text-white mb-2">
                         {instructions.provider}
                       </h3>
-                      {/* Show connected wallet info for EVM */}
-                      {isEVM && connectedWalletInfo && (
+                      {/* Show connected wallet info for EVM and Solana */}
+                      {(isEVM || isSolana) && connectedWalletInfo && (
                         <div className="mt-2 p-3 bg-neutral-900 border border-neutral-700 rounded text-sm">
                           <div className="flex items-center gap-2 text-neutral-300">
                             <span className="font-mono text-xs">Connected:</span>

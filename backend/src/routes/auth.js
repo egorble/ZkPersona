@@ -4,6 +4,7 @@ import { discordAuth, discordCallback, discordStatus } from '../providers/discor
 import { telegramAuth, telegramCallback, telegramStatus } from '../providers/telegram.js';
 import { tiktokAuth, tiktokCallback, tiktokStatus } from '../providers/tiktok.js';
 import { evmAuth, evmCallback, evmStatus } from '../providers/evm.js';
+import { solanaAuth, solanaCallback, solanaStatus } from '../providers/solana.js';
 import { getSession, saveSession, updateSession, saveVerification, hashToken } from '../database/index.js';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -419,8 +420,69 @@ router.get('/tiktok/start', (req, res) => handleAuthStart(req, res, 'tiktok', ti
 router.get('/tiktok/callback', (req, res) => handleAuthCallback(req, res, 'tiktok', tiktokCallback));
 router.get('/tiktok/status', (req, res) => handleAuthStatus(req, res, 'tiktok', tiktokStatus));
 
+// Solana Wallet
+router.get('/solana/start', (req, res) => handleAuthStart(req, res, 'solana', solanaAuth));
+router.post('/solana/callback', async (req, res) => {
+  // Handle POST request with body data
+  try {
+    const sessionId = req.body.state || req.query.state;
+    
+    if (!sessionId) {
+      return res.status(400).json({ error: 'Missing session ID' });
+    }
+
+    const session = await getSession(sessionId);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    // Pass req.body as query object for compatibility with handleAuthCallback
+    const result = await solanaCallback(req.body, {
+      id: sessionId,
+      provider: session.provider,
+      passportId: session.userId,
+      stateData: session.stateData
+    });
+
+    if (result.verified) {
+      const userId = session.userId || session.passportId;
+      const commitment = result.commitment || null;
+      
+      await saveVerification(userId, 'solana', {
+        commitment: commitment,
+        score: result.score,
+        maxScore: result.maxScore || result.score,
+        status: 'verified',
+        metadata: {
+          commitment: commitment,
+          score: result.score,
+          maxScore: result.maxScore || result.score,
+          criteria: result.criteria || [],
+        },
+      });
+
+      await updateSession(sessionId, {
+        status: 'verified',
+        stateData: {
+          ...session.stateData,
+          result,
+          completedAt: new Date()
+        }
+      });
+    }
+
+    const frontendUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify/callback?provider=solana&session=${sessionId}`;
+    res.redirect(frontendUrl);
+  } catch (error) {
+    console.error('[Auth] ❌ solana callback error:', error.message, error.stack);
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify/callback?error=${encodeURIComponent(error.message)}`);
+  }
+});
+router.get('/solana/status', (req, res) => handleAuthStatus(req, res, 'solana', solanaStatus));
+
 // EVM SIWE
 router.get('/evm/start', (req, res) => handleAuthStart(req, res, 'evm', evmAuth));
+router.get('/evm/status', (req, res) => handleAuthStatus(req, res, 'evm', evmStatus));
 router.post('/evm/callback', async (req, res) => {
   try {
     const sessionId = req.body.state || req.query.state;

@@ -1,46 +1,46 @@
 /**
- * Calculate EVM wallet verification score based on criteria
- * @param {Object} walletData - Wallet data from Etherscan
+ * Calculate Solana wallet verification score based on criteria
+ * @param {Object} walletData - Wallet data from Solscan
  * @returns {Object} { score: number, criteria: Array, maxScore: number }
  */
-export const calculateEVMScore = (walletData) => {
+export const calculateSolanaScore = (walletData) => {
   let score = 0;
   const criteria = [];
   const walletAgeDays = walletData.walletAgeDays || 0;
 
-  // 1. Points for ETH balance (minimum 0.01 ETH required)
-  const balanceEth = walletData.balanceEth || 0;
+  // 1. Points for SOL balance (minimum 0.1 SOL required)
+  const balanceSol = walletData.balanceSol || 0;
   
-  // Minimum balance requirement: 0.01 ETH
-  if (balanceEth < 0.01) {
+  // Minimum balance requirement: 0.1 SOL
+  if (balanceSol < 0.1) {
     criteria.push({
-      condition: 'Balance ≥ 0.01 ETH (minimum required)',
-      description: `Current balance: ${balanceEth.toFixed(4)} ETH (insufficient)`,
+      condition: 'Balance ≥ 0.1 SOL (minimum required)',
+      description: `Current balance: ${balanceSol.toFixed(4)} SOL (insufficient)`,
       points: 10,
       achieved: false
     });
-  } else if (balanceEth >= 0.1) {
+  } else if (balanceSol >= 1.0) {
     score += 10;
     criteria.push({
-      condition: 'Balance ≥ 0.1 ETH',
-      description: `Current balance: ${balanceEth.toFixed(4)} ETH`,
+      condition: 'Balance ≥ 1.0 SOL',
+      description: `Current balance: ${balanceSol.toFixed(4)} SOL`,
       points: 10,
       achieved: true
     });
-  } else if (balanceEth >= 0.05) {
+  } else if (balanceSol >= 0.5) {
     score += 7;
     criteria.push({
-      condition: 'Balance ≥ 0.05 ETH',
-      description: `Current balance: ${balanceEth.toFixed(4)} ETH`,
+      condition: 'Balance ≥ 0.5 SOL',
+      description: `Current balance: ${balanceSol.toFixed(4)} SOL`,
       points: 10,
       achieved: false,
       partialPoints: 7
     });
-  } else if (balanceEth >= 0.01) {
+  } else if (balanceSol >= 0.1) {
     score += 5;
     criteria.push({
-      condition: 'Balance ≥ 0.01 ETH (minimum)',
-      description: `Current balance: ${balanceEth.toFixed(4)} ETH`,
+      condition: 'Balance ≥ 0.1 SOL (minimum)',
+      description: `Current balance: ${balanceSol.toFixed(4)} SOL`,
       points: 10,
       achieved: false,
       partialPoints: 5
@@ -165,4 +165,3 @@ export const calculateEVMScore = (walletData) => {
     maxScore: 35
   };
 };
-
