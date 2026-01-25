@@ -41,6 +41,7 @@ export const initClientAndGetAuthUrl = async (sessionId, callbackOverride) => {
   const state = sessionId;
   
   // TikTok OAuth 2.0 authorization URL
+  // TikTok uses client_key instead of client_id
   const params = new URLSearchParams({
     client_key: TIKTOK_CLIENT_ID,
     redirect_uri: redirectUri,

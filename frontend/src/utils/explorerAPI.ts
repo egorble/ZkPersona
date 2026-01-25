@@ -365,16 +365,6 @@ export const getFunctionDisplayName = (functionName: string): string => {
     return FUNCTION_NAME_MAP[cleanName] || formatFunctionName(cleanName);
 };
 
-/**
- * Format function name for display (snake_case to Title Case)
- */
-function formatFunctionName(name: string): string {
-    return name
-        .split('_')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
-}
-
 // Note: If Explorer API is not available, the app falls back to wallet records
 // which are the authoritative source for private transaction data
 

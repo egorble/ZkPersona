@@ -58,18 +58,39 @@ export const getProviderConfig = (provider) => {
  * Returns object with provider names as keys and { configured: boolean, missing: string[] }
  */
 export const getProviderStatus = () => {
-  const providers = ['google', 'twitter', 'discord', 'github', 'steam'];
+  const providers = ['google', 'twitter', 'discord', 'github', 'steam', 'tiktok', 'telegram'];
   const status = {};
   
   providers.forEach(provider => {
     try {
-      getProviderConfig(provider);
-      status[provider] = { configured: true, missing: [] };
+      // TikTok and Telegram have their own config functions
+      if (provider === 'tiktok') {
+        const TIKTOK_CLIENT_ID = (process.env.TIKTOK_CLIENT_ID || '').trim();
+        const TIKTOK_CLIENT_SECRET = (process.env.TIKTOK_CLIENT_SECRET || '').trim();
+        if (!TIKTOK_CLIENT_ID || !TIKTOK_CLIENT_SECRET) {
+          throw new Error('TikTok not configured');
+        }
+        status[provider] = { configured: true, missing: [] };
+      } else if (provider === 'telegram') {
+        const TELEGRAM_BOT_TOKEN = (process.env.TELEGRAM_BOT_TOKEN || '').trim();
+        if (!TELEGRAM_BOT_TOKEN) {
+          throw new Error('Telegram not configured');
+        }
+        status[provider] = { configured: true, missing: [] };
+      } else {
+        getProviderConfig(provider);
+        status[provider] = { configured: true, missing: [] };
+      }
     } catch (error) {
       const missing = [];
       
       if (provider === 'steam') {
         if (!process.env.STEAM_API_KEY) missing.push('STEAM_API_KEY');
+      } else if (provider === 'tiktok') {
+        if (!process.env.TIKTOK_CLIENT_ID) missing.push('TIKTOK_CLIENT_ID');
+        if (!process.env.TIKTOK_CLIENT_SECRET) missing.push('TIKTOK_CLIENT_SECRET');
+      } else if (provider === 'telegram') {
+        if (!process.env.TELEGRAM_BOT_TOKEN) missing.push('TELEGRAM_BOT_TOKEN');
       } else {
         const upper = provider.toUpperCase();
         if (!process.env[`${upper}_CLIENT_ID`]) missing.push(`${upper}_CLIENT_ID`);
