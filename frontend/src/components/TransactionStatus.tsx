@@ -177,10 +177,13 @@ export const TransactionStatus: React.FC<TransactionStatusProps> = ({
               <h3 className="text-xl font-bold font-mono uppercase text-white mb-2">
                 Transaction Signed!
               </h3>
-              {displayFunctionName && (
-                <p className="text-neutral-300 text-xs font-mono mb-2">
-                  Function: {displayFunctionName}
-                </p>
+              {transactionFunctionName && (
+                <div className="text-neutral-300 text-xs font-mono mb-2 space-y-1">
+                  <p>Function: <span className="text-white">{transactionFunctionName}</span></p>
+                  {displayFunctionName !== transactionFunctionName && (
+                    <p className="text-neutral-400">({displayFunctionName})</p>
+                  )}
+                </div>
               )}
               <p className="text-neutral-400 text-sm font-mono mb-4">
                 Your transaction has been signed and submitted to the blockchain
@@ -210,13 +213,16 @@ export const TransactionStatus: React.FC<TransactionStatusProps> = ({
               <h3 className="text-xl font-bold font-mono uppercase text-white mb-2">
                 Transaction Confirmed!
               </h3>
-              {displayFunctionName && (
-                <p className="text-neutral-300 text-xs font-mono mb-2">
-                  Function: {displayFunctionName}
-                </p>
+              {transactionFunctionName && (
+                <div className="text-neutral-300 text-xs font-mono mb-2 space-y-1">
+                  <p>Function: <span className="text-white">{transactionFunctionName}</span></p>
+                  {displayFunctionName !== transactionFunctionName && (
+                    <p className="text-neutral-400">({displayFunctionName})</p>
+                  )}
+                </div>
               )}
               <p className="text-neutral-400 text-sm font-mono mb-4">
-                {displayFunctionName === 'Create Passport' 
+                {transactionFunctionName === 'create_passport' 
                   ? 'Your passport has been created successfully'
                   : 'Transaction confirmed successfully'}
               </p>

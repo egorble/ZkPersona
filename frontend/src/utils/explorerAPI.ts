@@ -16,20 +16,20 @@ export interface TransactionData {
 }
 
 /**
- * Function name mapping for display
- * Maps contract function names to user-friendly display names
- */
-/**
  * Function name mapping for user-friendly display names
  * Maps original contract function names (snake_case) to display names
+ * 
+ * NOTE: For display purposes, we show user-friendly names, but the original
+ * function names (claim_social_stamp, claim_point, etc.) are preserved in
+ * the function/functionName fields for reference.
  */
 const FUNCTION_NAME_MAP: Record<string, string> = {
     // User functions
     'create_passport': 'Create Passport',
     'aggregate_stamps': 'Aggregate Stamps',
     'prove_access': 'Prove Access',
-    'claim_social_stamp': 'Connect Social Network', // e.g., connect_discord, connect_twitter
-    'claim_point': 'Claim Points',
+    'claim_social_stamp': 'Connect Social Network', // Original: claim_social_stamp
+    'claim_point': 'Claim Points', // Original: claim_point
     
     // Admin functions
     'initialize': 'Initialize Contract',
@@ -45,17 +45,32 @@ const FUNCTION_NAME_MAP: Record<string, string> = {
  * Extract function name from transaction transitions
  * Aleo transactions contain transitions array, each with function_name
  */
+/**
+ * Extract original function name from transaction
+ * 
+ * This function extracts the original function name from Aleo transaction data.
+ * It handles multiple formats that the explorer API might return:
+ * - Direct function field
+ * - Transitions array (standard format)
+ * - Execution data
+ * - Program execution format
+ * 
+ * Returns the original function name (e.g., "claim_social_stamp", "claim_point", "create_passport")
+ * without any program prefix.
+ */
 function extractFunctionName(tx: any): string {
-    // Try direct function field first
+    // Try direct function field first (most common)
     if (tx.function && typeof tx.function === 'string' && tx.function.length > 0) {
         // Remove program prefix if present (e.g., "zkpersona_passport_v2.aleo/create_passport" -> "create_passport")
         const cleanName = tx.function.includes('/') 
             ? tx.function.split('/').pop() || tx.function
             : tx.function;
-        return cleanName;
+        // Also remove .aleo suffix if present
+        return cleanName.replace(/\.aleo$/, '');
     }
     
     // Try transitions array (standard Aleo transaction structure)
+    // Transactions contain transitions array, each transition has function_name
     if (tx.transitions && Array.isArray(tx.transitions) && tx.transitions.length > 0) {
         // Get the first transition's function name (main function)
         const transition = tx.transitions[0];
@@ -63,47 +78,60 @@ function extractFunctionName(tx: any): string {
             const cleanName = transition.function_name.includes('/')
                 ? transition.function_name.split('/').pop() || transition.function_name
                 : transition.function_name;
-            return cleanName;
+            return cleanName.replace(/\.aleo$/, '');
         }
         if (transition?.function) {
             const cleanName = transition.function.includes('/')
                 ? transition.function.split('/').pop() || transition.function
                 : transition.function;
-            return cleanName;
+            return cleanName.replace(/\.aleo$/, '');
         }
     }
     
-    // Try execution data
+    // Try execution data (for executed transactions)
     if (tx.execution) {
-        if (tx.execution.transitions && Array.isArray(tx.execution.transitions)) {
+        if (tx.execution.transitions && Array.isArray(tx.execution.transitions) && tx.execution.transitions.length > 0) {
             const transition = tx.execution.transitions[0];
             if (transition?.function_name) {
                 const cleanName = transition.function_name.includes('/')
                     ? transition.function_name.split('/').pop() || transition.function_name
                     : transition.function_name;
-                return cleanName;
+                return cleanName.replace(/\.aleo$/, '');
+            }
+            if (transition?.function) {
+                const cleanName = transition.function.includes('/')
+                    ? transition.function.split('/').pop() || transition.function
+                    : transition.function;
+                return cleanName.replace(/\.aleo$/, '');
             }
         }
         if (tx.execution.function) {
             const cleanName = tx.execution.function.includes('/')
                 ? tx.execution.function.split('/').pop() || tx.execution.function
                 : tx.execution.function;
-            return cleanName;
+            return cleanName.replace(/\.aleo$/, '');
+        }
+        if (tx.execution.function_name) {
+            const cleanName = tx.execution.function_name.includes('/')
+                ? tx.execution.function_name.split('/').pop() || tx.execution.function_name
+                : tx.execution.function_name;
+            return cleanName.replace(/\.aleo$/, '');
         }
     }
     
-    // Try program execution format
+    // Try program execution format (program_id.function_name)
     if (tx.program_id && tx.function_name) {
         // Extract function name from program_id.function_name format
         const parts = tx.function_name.split('.');
         if (parts.length > 1) {
-            return parts[parts.length - 1];
+            return parts[parts.length - 1].replace(/\.aleo$/, '');
         }
         // Also try splitting by /
         if (tx.function_name.includes('/')) {
-            return tx.function_name.split('/').pop() || tx.function_name;
+            const name = tx.function_name.split('/').pop() || tx.function_name;
+            return name.replace(/\.aleo$/, '');
         }
-        return tx.function_name;
+        return tx.function_name.replace(/\.aleo$/, '');
     }
     
     // Try alternative field names
@@ -111,9 +139,10 @@ function extractFunctionName(tx: any): string {
         const cleanName = tx.function_name.includes('/')
             ? tx.function_name.split('/').pop() || tx.function_name
             : tx.function_name;
-        return cleanName;
+        return cleanName.replace(/\.aleo$/, '');
     }
     
+    // Return empty string if no function name found
     return '';
 }
 
@@ -169,13 +198,27 @@ export const fetchTransactionHistory = async (
             const programId = tx.program_id || tx.program || PROGRAM_ID;
             
             // Debug logging (only in development)
-            if (functionName && process.env.NODE_ENV === 'development') {
-                console.debug('[ExplorerAPI] Extracted function name:', {
-                    txId: tx.id?.substring(0, 20) + '...',
-                    functionName,
-                    hasTransitions: !!tx.transitions,
-                    transitionsCount: tx.transitions?.length || 0
-                });
+            if (process.env.NODE_ENV === 'development') {
+                if (functionName) {
+                    console.debug('[ExplorerAPI] Extracted function name:', {
+                        txId: tx.id?.substring(0, 20) + '...',
+                        functionName,
+                        hasTransitions: !!tx.transitions,
+                        transitionsCount: tx.transitions?.length || 0,
+                        hasExecution: !!tx.execution,
+                        rawFunction: tx.function,
+                        rawFunctionName: tx.function_name
+                    });
+                } else {
+                    console.warn('[ExplorerAPI] Could not extract function name from transaction:', {
+                        txId: tx.id?.substring(0, 20) + '...',
+                        hasTransitions: !!tx.transitions,
+                        hasExecution: !!tx.execution,
+                        rawFunction: tx.function,
+                        rawFunctionName: tx.function_name,
+                        txKeys: Object.keys(tx)
+                    });
+                }
             }
             
             return {
@@ -184,8 +227,8 @@ export const fetchTransactionHistory = async (
                 type: tx.type || "unknown",
                 status: tx.status || "confirmed",
                 program: programId,
-                function: functionName, // Original function name from contract (e.g., "claim_social_stamp", "claim_point")
-                functionName: functionName, // Alias for consistency
+                function: functionName, // Original function name from contract (e.g., "claim_social_stamp", "claim_point", "create_passport")
+                functionName: functionName, // Alias for consistency - always contains original snake_case name
             };
         }).filter((tx: TransactionData) => tx.txId);
         
@@ -303,16 +346,22 @@ export const fetchProgramExecutions = async (
 
 /**
  * Get display name for function (exported for use in UI components)
+ * 
+ * Returns user-friendly display name, but preserves original function name
+ * in the TransactionData.function field for reference.
+ * 
+ * @param functionName - Original function name from contract (e.g., "claim_social_stamp", "claim_point")
+ * @returns User-friendly display name or formatted original name
  */
 export const getFunctionDisplayName = (functionName: string): string => {
     if (!functionName) return 'Unknown';
     
-    // Remove program prefix if present
+    // Remove program prefix if present (e.g., "zkpersona_passport_v2.aleo/claim_social_stamp" -> "claim_social_stamp")
     const cleanName = functionName.includes('/') 
         ? functionName.split('/').pop() || functionName
         : functionName;
     
-    // Return mapped name or formatted original name
+    // Return mapped name or formatted original name (snake_case -> Title Case)
     return FUNCTION_NAME_MAP[cleanName] || formatFunctionName(cleanName);
 };
 
