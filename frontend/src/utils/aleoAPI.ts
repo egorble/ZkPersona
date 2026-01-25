@@ -99,12 +99,14 @@ async function callViewFunction(
         });
         
         if (!response.ok) {
-            // Handle 404 specifically (contract not deployed)
+            // Handle 404 specifically (contract not deployed) - silent
             if (response.status === 404) {
-                console.debug(`[AleoAPI] Contract not deployed or function not found: ${functionName}`);
+                // Don't log 404s - they're expected when contract is not deployed
                 return null;
             }
-            throw new Error(`RPC call failed: ${response.statusText}`);
+            // Only log non-404 errors
+            console.warn(`[AleoAPI] RPC call failed (${response.status}): ${functionName} - ${response.statusText}`);
+            return null;
         }
         
         const data = await response.json();
@@ -164,6 +166,7 @@ export const getStampPublic = async (stampId: number): Promise<PublicStamp | nul
 // Get stamp count (view function) - PUBLIC metadata
 export const getStampCount = async (): Promise<number> => {
     try {
+        // get_stamp_count is a view function with no inputs
         const result = await callViewFunction("get_stamp_count", []);
         
         if (!result || !result.output) {

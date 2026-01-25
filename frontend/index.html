@@ -1,14 +1,139 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="en" class="dark">
   <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ZkPersona - Decentralized Identity Verification</title>
-  </head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VERIF | Proof of Humanity</title>
+    <link rel="stylesheet" href="/index.css">
+    <script>
+      // Suppress wallet extension errors in console
+      (function() {
+        const originalWarn = console.warn;
+        const originalError = console.error;
+        const originalLog = console.log;
+        
+           const suppressPatterns = [
+             'Cannot redefine property: ethereum',
+             'Failed to define property',
+             'Unable to redefine window.ethereum',
+             'Failed to assign ethereum proxy',
+             'Invalid property descriptor',
+             'Cannot both specify accessors',
+             'Pocket Universe is running',
+             'Razor Wallet Injected',
+             'Nightly Wallet Injected',
+             'Could not attach to provider',
+             'Overwrites EVM default provider',
+             '[injected|debug]',
+             '[injected|warn]',
+             '[injected|info]',
+             'evmAsk.js',
+             'contentScript.ts',
+             'inject.chrome',
+             'Starting injected script',
+             'Starting provider script',
+             'PostMessage',
+             'Added proxy',
+             'Failed to define property TypeError'
+           ];
+        
+        const shouldSuppress = (message) => {
+          const msg = message?.toString() || '';
+          return suppressPatterns.some(pattern => msg.includes(pattern));
+        };
+        
+        console.warn = function(...args) {
+          if (!shouldSuppress(args[0])) {
+            originalWarn.apply(console, args);
+          }
+        };
+        
+        console.error = function(...args) {
+          if (!shouldSuppress(args[0])) {
+            originalError.apply(console, args);
+          }
+        };
+        
+        console.log = function(...args) {
+          if (!shouldSuppress(args[0])) {
+            originalLog.apply(console, args);
+          }
+        };
+        
+        // Suppress error before it reaches console
+        window.addEventListener('error', function(event) {
+          const message = event.message || '';
+          if (shouldSuppress(message)) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            return false;
+          }
+        }, true);
+        
+        // Also catch errors during script execution
+        const originalDefineProperty = Object.defineProperty;
+        try {
+          Object.defineProperty = function(obj, prop, descriptor) {
+            if (prop === 'ethereum' && obj === window) {
+              try {
+                return originalDefineProperty.call(this, obj, prop, descriptor);
+              } catch (e) {
+                // Suppress ethereum redefinition errors
+                if (e.message && e.message.includes('Cannot redefine property')) {
+                  return obj;
+                }
+                throw e;
+              }
+            }
+            return originalDefineProperty.call(this, obj, prop, descriptor);
+          };
+        } catch (e) {
+          // Ignore if already defined
+        }
+        
+        window.addEventListener('unhandledrejection', function(event) {
+          const message = event.reason?.message || event.reason?.toString() || '';
+          if (shouldSuppress(message)) {
+            event.preventDefault();
+            return false;
+          }
+        });
+      })();
+    </script>
+    <style>
+      body {
+        background-color: #050505;
+        color: #ffffff;
+      }
+      .grain {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 50;
+        opacity: 0.03;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.37.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+    <div class="grain"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
 </html>
-

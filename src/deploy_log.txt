@@ -1,0 +1,68 @@
+﻿leo : Warning [WTYC0372004]: `self.caller` used as the owner of record `Passport`
+At C:\Users\Leonid\AppData\Local\Temp\ps-script-7965d011-5ff9-4583-8f3d-6d7c9ebb5cb6.ps1:87 char:59
++ ... ersona\src; leo deploy --network testnet --private-key APrivateKey1zk ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning [WTYC03...cord `Passport`:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    --> \\?\C:\Users\Leonid\Documents\trae_projects\zkpersona\src\src\main.leo:309:20
+     |
+ 309 |             owner: self.caller,
+     |                    ^^^^^^^^^^^
+     |
+     = `self.caller` may refer to a program address, which cannot spend records.
+
+       Leo     556 statements before dead code elimination.
+       Leo     556 statements after dead code elimination.
+       Leo     The program checksum is: '[173u8, 45u8, 104u8, 244u8, 41u8, 216u8, 141u8, 167u8, 243u8, 178u8, 0u8, 15u8, 29u8, 157u8, 98u8, 128u8, 161u8, 101u8, 155u8, 228u8, 1u8, 187u8, 15u8, 244u8, 124u8, 154u8, 30u8, 191u8, 207u8, 143u8, 241u8, 231u8]'.
+       Leo тЬЕ Compiled 'zkpersona_passport.aleo' into Aleo instructions.
+
+ЁЯУв Using the following consensus heights: 0,2950000,4800000,6625000,6765000,7600000,8365000,9173000,9800000,10525000,11952000,12669000
+  To override, pass in `--consensus-heights` or override the environment variable `CONSENSUS_VERSION_HEIGHTS`.
+
+Attempting to determine the consensus version from the latest block height at https://api.explorer.provable.com/v1...
+
+ЁЯЫая╕П  Deployment Plan Summary
+тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+ЁЯФз Configuration:
+  Private Key:        APrivateKey1zkp3CAcpd4QN...
+  Address:            aleo1e46vlesnaw2gvl99ln9...
+  Endpoint:           https://api.explorer.provable.com/v1
+  Network:            testnet
+  Consensus Version:  12
+
+ЁЯУж Deployment Tasks:
+  тАв zkpersona_passport.aleo  тФВ priority fee: 0  тФВ fee record: no (public fee)
+
+тЪЩя╕П Actions:
+  тАв Transaction(s) will NOT be printed to the console.
+  тАв Transaction(s) will NOT be saved to a file.
+  тАв Transaction(s) will NOT be broadcast to the network.
+тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+
+
+ЁЯФз Your program 'zkpersona_passport.aleo' has the following constructor.
+тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+constructor:
+    assert.eq edition 0u16;
+тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+Once it is deployed, it CANNOT be changed.
+
+ЁЯУж Creating deployment transaction for 'zkpersona_passport.aleo'...
+
+
+ЁЯУК Deployment Summary for zkpersona_passport.aleo
+тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+  Total Variables:      636,100
+  Total Constraints:    477,753
+  Max Variables:        2,097,152
+  Max Constraints:      2,097,152
+
+ЁЯТ░ Cost Breakdown (credits)
+  Transaction Storage:  15.646000
+  Program Synthesis:    1.113853
+  Namespace:            1.000000
+  Constructor:          0.002000
+  Priority Fee:         0.000000
+  Total Fee:            17.761853
+тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА

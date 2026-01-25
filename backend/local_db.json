@@ -1,0 +1,92 @@
+{
+  "verifications": [
+    [
+      "aleo1e46vlesnaw2gvl99ln9zedjeanmus6swzkk93w5568ne5yux95psdngyst:telegram",
+      {
+        "userId": "aleo1e46vlesnaw2gvl99ln9zedjeanmus6swzkk93w5568ne5yux95psdngyst",
+        "provider": "telegram",
+        "providerAccountId": "865419808",
+        "score": 8,
+        "maxScore": 10,
+        "status": "verified",
+        "metadata": {
+          "verified": true,
+          "provider": "telegram",
+          "userId": "865419808",
+          "username": "kravadk",
+          "score": 8,
+          "criteria": [
+            {
+              "condition": "Account exists",
+              "description": "Active Telegram account",
+              "points": 3,
+              "achieved": true
+            },
+            {
+              "condition": "Username set",
+              "description": "Telegram username is configured",
+              "points": 2,
+              "achieved": true
+            },
+            {
+              "condition": "Profile photo",
+              "description": "Profile photo is set",
+              "points": 2,
+              "achieved": false
+            },
+            {
+              "condition": "Account age ≥ 1 year",
+              "description": "Account age: 365 days",
+              "points": 3,
+              "achieved": true
+            }
+          ],
+          "maxScore": 10,
+          "profile": {
+            "telegramId": "865419808",
+            "telegramUsername": "kravadk",
+            "firstName": "Dmytro",
+            "photoUrl": null,
+            "accountAgeDays": 365
+          }
+        },
+        "accessTokenHash": null,
+        "verifiedAt": "2026-01-23T00:38:22.371Z",
+        "expiresAt": null
+      }
+    ]
+  ],
+  "sessions": [
+    [
+      "telegram_358ba57a-0261-4549-964e-65f504cd31bd",
+      {
+        "sessionId": "telegram_358ba57a-0261-4549-964e-65f504cd31bd",
+        "provider": "telegram",
+        "userId": "aleo1e46vlesnaw2gvl99ln9zedjeanmus6swzkk93w5568ne5yux95psdngyst",
+        "status": "pending",
+        "stateData": {
+          "passportId": "aleo1e46vlesnaw2gvl99ln9zedjeanmus6swzkk93w5568ne5yux95psdngyst",
+          "status": "in_progress"
+        },
+        "createdAt": "2026-01-23T00:23:31.935Z",
+        "expiresAt": "2026-01-23T01:23:31.935Z"
+      }
+    ],
+    [
+      "telegram_92558dbd-68a5-4046-b704-68865d83b072",
+      {
+        "sessionId": "telegram_92558dbd-68a5-4046-b704-68865d83b072",
+        "provider": "telegram",
+        "userId": "aleo1e46vlesnaw2gvl99ln9zedjeanmus6swzkk93w5568ne5yux95psdngyst",
+        "status": "pending",
+        "stateData": {
+          "passportId": "aleo1e46vlesnaw2gvl99ln9zedjeanmus6swzkk93w5568ne5yux95psdngyst",
+          "status": "in_progress"
+        },
+        "createdAt": "2026-01-23T00:38:19.811Z",
+        "expiresAt": "2026-01-23T01:38:19.811Z"
+      }
+    ]
+  ],
+  "profiles": []
+}

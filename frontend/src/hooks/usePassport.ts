@@ -110,7 +110,13 @@ export const usePassport = () => {
             // Privacy: We do NOT parse or cache private passport data
             // Privacy: We do NOT read passport via RPC API
             // Privacy: We do NOT store private data in localStorage
-        } catch (error) {
+        } catch (error: any) {
+            // Silently handle wallet not connected errors
+            if (error?.name === 'WalletNotConnectedError' || error?.message?.includes('WalletNotConnected')) {
+                console.debug("[usePassport] Wallet not connected, skipping passport check");
+                setHasPassport(false);
+                return;
+            }
             console.error("[usePassport] Error checking passport:", error);
             setHasPassport(false);
         }

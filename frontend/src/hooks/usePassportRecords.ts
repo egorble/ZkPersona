@@ -70,7 +70,7 @@ export const usePassportRecords = () => {
             }
 
             // Fallback: try encrypted records
-            if (records.length === 0 && adapter.requestRecords) {
+            if (records.length === 0 && adapter.requestRecords && publicKey) {
                 try {
                     const encrypted = await adapter.requestRecords(PROGRAM_ID);
                     if (encrypted && Array.isArray(encrypted)) {

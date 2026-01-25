@@ -1,7 +1,7 @@
 {
-  "program": "passportapp.aleo",
-  "version": "0.1.0",
-  "description": "Decentralized identity verification service on Aleo",
+  "program": "zkpersona_passport_v3.aleo",
+  "version": "0.3.0",
+  "description": "ZK Gitcoin Passport on Aleo - Decentralized identity verification with privacy (v3 with claim_point function)",
   "license": "MIT"
 }
 

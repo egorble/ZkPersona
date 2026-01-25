@@ -1,12 +1,15 @@
 // ZK Passport Identity System
 
-program passportapp.aleo {
+program zkpersona_passport_v2.aleo {
     @noupgrade
     async constructor() {}
 
     // Data types
     record Passport {
         owner: address,
+        total_stamps: u32,
+        total_points: u64,
+        humanity_score: u64,
         stamps_commitment: field,
         score_commitment: field,
         issued_at: u64,
@@ -16,15 +19,32 @@ program passportapp.aleo {
     record StampRecord {
         owner: address,
         stamp_id: u32,
+        platform_id: u8,
         points: u64,
-        issuer: address,
+        social_commitment: field,
         issued_at: u64
     }
     struct StampMetadata {
         stamp_id: u32,
+        platform_id: u8,
         points: u64,
+        name_hash: field,
         is_active: bool,
         created_at: u64
+    }
+    struct SocialBinding {
+        commitment: field,
+        platform_id: u8,
+        claimed_at: u64,
+        is_active: bool
+    }
+    struct PointClaim {
+        user: address,
+        platform_id: u8,
+        commitment: field,
+        points: u64,
+        claimed_at: u64,
+        is_active: bool
     }
 
     struct Admin {
@@ -45,6 +65,9 @@ program passportapp.aleo {
     mapping stamps: u32 => StampMetadata;
     mapping stamp_count: u32 => u32;
     mapping nullifiers: field => Nullifier;
+    mapping social_commitments: field => SocialBinding;
+    mapping point_claims: field => PointClaim;  // commitment => PointClaim (prevents double claiming)
+    mapping user_platform_claims: field => bool;  // hash(user_address, platform_id) => bool (prevents same user claiming same platform twice)
 
     // Helper functions
     inline calculate_humanity_score(stamps_count: u32, total_points: u64) -> u64 {
@@ -171,11 +194,15 @@ program passportapp.aleo {
         Mapping::set(is_admin, admin_to_remove, false);
     }
 
-    async transition create_stamp(public points: u64) -> (u32, Future) {
-        return (0u32, finalize_create_stamp(self.caller, points));
+    async transition create_stamp(
+        public platform_id: u8,
+        public points: u64,
+        public name_hash: field
+    ) -> (u32, Future) {
+        return (0u32, finalize_create_stamp(self.caller, platform_id, points, name_hash));
     }
 
-    async function finalize_create_stamp(caller: address, points: u64) {
+    async function finalize_create_stamp(caller: address, platform_id: u8, points: u64, name_hash: field) {
         let caller_admin: Admin = Mapping::get_or_use(admins, caller, Admin {
             admin_address: caller,
             permissions: 0u8,
@@ -189,7 +216,9 @@ program passportapp.aleo {
 
         let stamp: StampMetadata = StampMetadata {
             stamp_id: stamp_id,
+            platform_id: platform_id,
             points: points,
+            name_hash: name_hash,
             is_active: true,
             created_at: now,
         };
@@ -216,14 +245,18 @@ program passportapp.aleo {
 
         let stamp: StampMetadata = Mapping::get_or_use(stamps, stamp_id, StampMetadata {
             stamp_id: stamp_id,
+            platform_id: 0u8,
             points: 0u64,
+            name_hash: 0field,
             is_active: false,
             created_at: 0u64,
         });
 
         let updated_stamp: StampMetadata = StampMetadata {
             stamp_id: stamp_id,
+            platform_id: stamp.platform_id,
             points: points,
+            name_hash: stamp.name_hash,
             is_active: is_active,
             created_at: stamp.created_at,
         };
@@ -245,14 +278,18 @@ program passportapp.aleo {
 
         let stamp: StampMetadata = Mapping::get_or_use(stamps, stamp_id, StampMetadata {
             stamp_id: stamp_id,
+            platform_id: 0u8,
             points: 0u64,
+            name_hash: 0field,
             is_active: false,
             created_at: 0u64,
         });
 
         let deleted_stamp: StampMetadata = StampMetadata {
             stamp_id: stamp_id,
+            platform_id: stamp.platform_id,
             points: stamp.points,
+            name_hash: stamp.name_hash,
             is_active: false,
             created_at: stamp.created_at,
         };
@@ -260,50 +297,145 @@ program passportapp.aleo {
         Mapping::set(stamps, stamp_id, deleted_stamp);
     }
 
-    // Issue stamp to user as private record
+    // Issue stamp to user as private record (admin function)
     async transition issue_stamp(
         private user_passport: Passport,
         public user: address,
-        public stamp_id: u32
+        public stamp_id: u32,
+        public points: u64
     ) -> (StampRecord, Future) {
         assert(user_passport.owner == user);
-        let stamp: StampMetadata = Mapping::get_or_use(stamps, stamp_id, StampMetadata {
-            stamp_id: stamp_id,
-            points: 0u64,
-            is_active: false,
-            created_at: 0u64,
-        });
-        assert(stamp.is_active);
 
         let now: u64 = 0u64;
-        let admin_address: address = self.caller;
         let stamp_record: StampRecord = StampRecord {
             owner: user,
             stamp_id: stamp_id,
-            points: stamp.points,
-            issuer: admin_address,
+            platform_id: 0u8,
+            points: points,
+            social_commitment: 0field,
             issued_at: now,
         };
 
-        return (stamp_record, finalize_issue_stamp(self.caller));
+        return (stamp_record, finalize_issue_stamp(self.caller, stamp_id, points));
     }
 
-    async function finalize_issue_stamp(caller: address) {
+    async function finalize_issue_stamp(caller: address, stamp_id: u32, points: u64) {
         let caller_admin: Admin = Mapping::get_or_use(admins, caller, Admin {
             admin_address: caller,
             permissions: 0u8,
             added_at: 0u64,
         });
         assert((caller_admin.permissions & 8u8) == 8u8);
+        
+        let stamp: StampMetadata = Mapping::get_or_use(stamps, stamp_id, StampMetadata {
+            stamp_id: stamp_id,
+            platform_id: 0u8,
+            points: 0u64,
+            name_hash: 0field,
+            is_active: false,
+            created_at: 0u64,
+        });
+        assert(stamp.is_active);
+        assert(stamp.points == points);
+    }
+
+    // ГОЛОВНА ФУНКЦІЯ: Claim штампу за соцмережу
+    async transition claim_social_stamp(
+        private passport: Passport,
+        public platform_id: u8,
+        private social_commitment: field,
+        public stamp_id: u32,
+        public points: u64
+    ) -> (Passport, StampRecord, Future) {
+        // Перевірка володіння паспортом
+        assert(passport.owner == self.caller);
+
+        // Отримуємо метадані штампу (буде перевірено в finalize)
+        let now: u64 = 0u64;
+
+        // Створюємо StampRecord для користувача
+        let stamp_record: StampRecord = StampRecord {
+            owner: self.caller,
+            stamp_id: stamp_id,
+            platform_id: platform_id,
+            points: points,
+            social_commitment: social_commitment,
+            issued_at: now,
+        };
+
+        // Оновлюємо паспорт
+        let new_total_stamps: u32 = passport.total_stamps + 1u32;
+        
+        let updated_passport: Passport = Passport {
+            owner: passport.owner,
+            total_stamps: new_total_stamps,
+            total_points: passport.total_points,  // Буде оновлено при aggregate
+            humanity_score: passport.humanity_score,
+            stamps_commitment: passport.stamps_commitment,
+            score_commitment: passport.score_commitment,
+            issued_at: passport.issued_at,
+            updated_at: now,
+            nonce: passport.nonce,
+        };
+
+        return (
+            updated_passport,
+            stamp_record,
+            finalize_claim_social_stamp(social_commitment, platform_id, stamp_id, points)
+        );
+    }
+
+    async function finalize_claim_social_stamp(
+        commitment: field,
+        platform_id: u8,
+        stamp_id: u32,
+        points: u64
+    ) {
+        // 1. Перевірка: чи commitment вже використаний?
+        let default_binding: SocialBinding = SocialBinding {
+            commitment: 0field,
+            platform_id: 0u8,
+            claimed_at: 0u64,
+            is_active: false,
+        };
+        
+        let existing: SocialBinding = Mapping::get_or_use(
+            social_commitments,
+            commitment,
+            default_binding
+        );
+        
+        // Якщо is_active == true, значить вже використаний
+        assert(!existing.is_active);
+
+        // 2. Перевірка: чи stamp існує і активний?
+        let stamp: StampMetadata = Mapping::get(stamps, stamp_id);
+        assert(stamp.is_active);
+        assert(stamp.platform_id == platform_id);
+        assert(stamp.points == points);
+
+        // 3. Зберігаємо commitment як зайнятий
+        let now: u64 = 0u64;
+        let binding: SocialBinding = SocialBinding {
+            commitment: commitment,
+            platform_id: platform_id,
+            claimed_at: now,
+            is_active: true,
+        };
+        
+        Mapping::set(social_commitments, commitment, binding);
     }
 
     // User functions
     async transition create_passport(public nonce: field) -> (Passport, Future) {
         let now: u64 = 0u64;
 
-        // Initialize with empty commitments
+        // Initialize with empty commitments and zero counts
         let passport: Passport = Passport {
             owner: self.caller,
+            total_stamps: 0u32,
+            total_points: 0u64,
+            humanity_score: 0u64,
             stamps_commitment: 0field,
             score_commitment: 0field,
             issued_at: now,
@@ -325,19 +457,6 @@ program passportapp.aleo {
         private stamp5: StampRecord,
         private secret: field
     ) -> (Passport, Future) {
-        let updated_passport = finalize_aggregate_stamps(passport, stamp1, stamp2, stamp3, stamp4, stamp5, secret);
-        return (updated_passport, finalize_aggregate_stamps(passport, stamp1, stamp2, stamp3, stamp4, stamp5, secret));
-    }
-
-    async function finalize_aggregate_stamps(
-        passport: Passport,
-        stamp1: StampRecord,
-        stamp2: StampRecord,
-        stamp3: StampRecord,
-        stamp4: StampRecord,
-        stamp5: StampRecord,
-        secret: field
-    ) -> Passport {
         assert(stamp1.owner == passport.owner);
         assert(stamp2.owner == passport.owner);
         assert(stamp3.owner == passport.owner);
@@ -356,13 +475,19 @@ program passportapp.aleo {
         let now: u64 = 0u64;
         let updated_passport: Passport = Passport {
             owner: passport.owner,
+            total_stamps: stamps_count,
+            total_points: total_points,
+            humanity_score: score,
             stamps_commitment: stamps_commitment,
             score_commitment: score_commitment,
             issued_at: passport.issued_at,
             updated_at: now,
             nonce: passport.nonce,
         };
-        return updated_passport;
+        return (updated_passport, finalize_aggregate_stamps());
+    }
+
+    async function finalize_aggregate_stamps() {
     }
 
     // Generate ZK access proof
@@ -428,37 +553,115 @@ program passportapp.aleo {
         Mapping::set(nullifiers, nullifier, nullifier_record);
     }
 
-    // Verification helper functions
-    async transition check_nullifier(public nullifier: field) -> (bool, Future) {
-        return (finalize_check_nullifier(nullifier), finalize_check_nullifier(nullifier));
+
+    // Helper function to generate user-platform hash
+    inline hash_user_platform(user: address, platform_id: u8) -> field {
+        let user_field: field = user as field;
+        let platform_field: field = (platform_id as field);
+        let hash: field = user_field * 7919field + platform_field * 7907field;
+        hash = hash * (user_field + platform_field);
+        return hash;
     }
 
-    async function finalize_check_nullifier(nullifier: field) {
-        let existing: Nullifier = Mapping::get_or_use(nullifiers, nullifier, Nullifier {
-            nullifier: 0field,
-            app_id: 0field,
-            used_at: 0u64,
-        });
-    }
+    // Main function: Claim points after successful social network connection
+    async transition claim_point(
+        private passport: Passport,
+        public platform_id: u8,
+        private social_commitment: field,
+        public points: u64
+    ) -> (Passport, Future) {
+        // 1. Verify passport ownership
+        assert(passport.owner == self.caller);
 
-    async transition get_stamp_metadata(public stamp_id: u32) -> (StampMetadata, Future) {
-        return (finalize_get_stamp_metadata(stamp_id), finalize_get_stamp_metadata(stamp_id));
-    }
-
-    async function finalize_get_stamp_metadata(stamp_id: u32) {
-        let stamp: StampMetadata = Mapping::get_or_use(stamps, stamp_id, StampMetadata {
-            stamp_id: stamp_id,
-            points: 0u64,
+        // 2. Verify that social commitment exists and is active (network is connected)
+        let default_binding: SocialBinding = SocialBinding {
+            commitment: 0field,
+            platform_id: 0u8,
+            claimed_at: 0u64,
             is_active: false,
-            created_at: 0u64,
-        });
+        };
+        
+        let binding: SocialBinding = Mapping::get_or_use(
+            social_commitments,
+            social_commitment,
+            default_binding
+        );
+        
+        // Social network must be connected (is_active == true)
+        assert(binding.is_active);
+        assert(binding.platform_id == platform_id);
+
+        // 3. Check if this commitment was already used for claiming points
+        let default_claim: PointClaim = PointClaim {
+            user: (0field as address),
+            platform_id: 0u8,
+            commitment: 0field,
+            points: 0u64,
+            claimed_at: 0u64,
+            is_active: false,
+        };
+        
+        let existing_claim: PointClaim = Mapping::get_or_use(
+            point_claims,
+            social_commitment,
+            default_claim
+        );
+        
+        // Prevent double claiming with the same commitment
+        assert(!existing_claim.is_active);
+
+        // 4. Check if user already claimed points for this platform (prevent same user claiming same platform twice)
+        let user_platform_hash: field = hash_user_platform(self.caller, platform_id);
+        let already_claimed: bool = Mapping::get_or_use(user_platform_claims, user_platform_hash, false);
+        
+        // Prevent same user from claiming points for the same platform again
+        assert(!already_claimed);
+
+        // 5. Update passport with new points
+        let now: u64 = 0u64;
+        let new_total_points: u64 = passport.total_points + points;
+        let new_humanity_score: u64 = calculate_humanity_score(passport.total_stamps, new_total_points);
+        
+        let updated_passport: Passport = Passport {
+            owner: passport.owner,
+            total_stamps: passport.total_stamps,
+            total_points: new_total_points,
+            humanity_score: new_humanity_score,
+            stamps_commitment: passport.stamps_commitment,
+            score_commitment: passport.score_commitment,
+            issued_at: passport.issued_at,
+            updated_at: now,
+            nonce: passport.nonce,
+        };
+
+        return (
+            updated_passport,
+            finalize_claim_point(self.caller, platform_id, social_commitment, points, user_platform_hash)
+        );
     }
 
-    async transition get_stamp_count() -> (u32, Future) {
-        return (finalize_get_stamp_count(), finalize_get_stamp_count());
+    async function finalize_claim_point(
+        user: address,
+        platform_id: u8,
+        commitment: field,
+        points: u64,
+        user_platform_hash: field
+    ) {
+        // Save point claim to prevent double claiming
+        let now: u64 = 0u64;
+        let claim: PointClaim = PointClaim {
+            user: user,
+            platform_id: platform_id,
+            commitment: commitment,
+            points: points,
+            claimed_at: now,
+            is_active: true,
+        };
+        
+        Mapping::set(point_claims, commitment, claim);
+        
+        // Mark user-platform combination as claimed
+        Mapping::set(user_platform_claims, user_platform_hash, true);
     }
 
-    async function finalize_get_stamp_count() {
-        let count: u32 = Mapping::get_or_use(stamp_count, 0u32, 0u32);
-    }
 }

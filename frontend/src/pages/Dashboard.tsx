@@ -67,31 +67,7 @@ export const Dashboard = () => {
         );
     }
 
-    if (!hasPassport) {
-        return (
-            <PageRoot className="text-color-1">
-                <HeaderContentFooterGrid>
-                    <Header programId={PROGRAM_ID} />
-                    <BodyWrapper className="mt-4 md:mt-0 pt-12 md:pt-16 flex items-center justify-center min-h-[60vh]">
-                        <div className="text-center max-w-xl">
-                            <h2 className="text-3xl font-heading mb-4">Create Your Passport</h2>
-                            <p className="text-color-3 mb-6">
-                                Get started by creating your ZkPersona. This will be your decentralized identity on the Aleo blockchain.
-                            </p>
-                            <button 
-                                className="px-8 py-3 bg-foreground-2 text-white rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
-                                onClick={handleCreatePassport}
-                                disabled={loading}
-                            >
-                                {loading ? "Creating..." : "Create Passport"}
-                            </button>
-                        </div>
-                    </BodyWrapper>
-                    <WelcomeFooter />
-                </HeaderContentFooterGrid>
-            </PageRoot>
-        );
-    }
+    // No passport creation required - show dashboard immediately
 
     // PRIVACY: Score is private - we don't display it
     // PRIVACY: User stamp ownership is private - we don't display which stamps user has

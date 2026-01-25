@@ -116,7 +116,7 @@ try {
 Write-Host "📝 Step 3: Saving deployment information..." -ForegroundColor Yellow
 Write-Host ""
 
-$programId = "passportapp.aleo"
+$programId = "zkpersona_passport_v2.aleo"
 $deploymentInfo = @{
     program_id = $programId
     network = $Network
@@ -140,10 +140,10 @@ Write-Host ""
 Write-Host "📋 Next Steps:" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "1. Get the Program ID from the deployment output above" -ForegroundColor White
-Write-Host "   (Usually in format: aleo1xxxxx.passportapp)" -ForegroundColor Gray
+Write-Host "   (Usually in format: aleo1xxxxx.zkpersona_passport_v2)" -ForegroundColor Gray
 Write-Host ""
 Write-Host "2. Update frontend/src/deployed_program.ts:" -ForegroundColor White
-Write-Host "   export const PROGRAM_ID = `"aleo1xxxxx.passportapp`";" -ForegroundColor Cyan
+Write-Host "   export const PROGRAM_ID = `"aleo1xxxxx.zkpersona_passport_v2`";" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "3. Initialize the contract (first admin):" -ForegroundColor White
 Write-Host "   - Open Leo Wallet Extension" -ForegroundColor Gray

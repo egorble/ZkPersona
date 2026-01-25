@@ -280,7 +280,7 @@ function parsePassportRecord(recordString: string): PassportRecord | null {
         //   total_stamps: 5u32,
         //   total_points: 100u64,
         //   humanity_score: 50u64,
-        //   created_at: 1234567890u64,
+        //   issued_at: 1234567890u64,
         //   updated_at: 1234567890u64,
         //   _nonce: ...
         // }
@@ -289,7 +289,8 @@ function parsePassportRecord(recordString: string): PassportRecord | null {
         const stampsMatch = recordString.match(/total_stamps:\s*(\d+)u32/);
         const pointsMatch = recordString.match(/total_points:\s*(\d+)u64/);
         const scoreMatch = recordString.match(/humanity_score:\s*(\d+)u64/);
-        const createdMatch = recordString.match(/created_at:\s*(\d+)u64/);
+        // Try both issued_at and created_at for compatibility
+        const createdMatch = recordString.match(/(?:issued_at|created_at):\s*(\d+)u64/);
         const updatedMatch = recordString.match(/updated_at:\s*(\d+)u64/);
         
         if (!ownerMatch || !stampsMatch || !pointsMatch || !scoreMatch || !createdMatch || !updatedMatch) {
