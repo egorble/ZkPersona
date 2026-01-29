@@ -5,7 +5,6 @@ import { LeoWalletAdapter } from '@demox-labs/aleo-wallet-adapter-leo';
 import { DecryptPermission, WalletAdapterNetwork, WalletNotSelectedError, WalletName } from '@demox-labs/aleo-wallet-adapter-base';
 import { PROGRAM_ID } from './src/deployed_program';
 import { usePassport } from './src/hooks/usePassport';
-import { useStamps } from './src/hooks/useStamps';
 import { Stamp, StampStatus, UserState } from './types';
 import { StampCard } from './components/StampCard';
 import { Button } from './components/Button';
@@ -16,7 +15,6 @@ import { TransactionStatus as TransactionStatusComponent, TransactionStatusType 
 import { VerificationInstructions } from './src/components/VerificationInstructions';
 import { WalletRequiredModal } from './src/components/WalletRequiredModal';
 import { useVerification } from './src/hooks/useVerification';
-import { platformIdToProvider } from './src/utils/platformMapping';
 import { GlobalLoader } from './src/components/GlobalLoader';
 import { OAuthCallback } from './src/pages/OAuthCallback';
 import { VerifyCallback } from './src/pages/VerifyCallback';
@@ -51,9 +49,7 @@ import {
   X,
   Loader2,
   Gamepad2,
-  Globe,
-  Twitter,
-  Github
+  Twitter
 } from 'lucide-react';
 
 // --- Static Data (fallback stamps) ---
@@ -68,13 +64,13 @@ const INITIAL_STAMPS: Stamp[] = [
     provider: 'discord'
   },
   {
-    id: 'telegram',
-    title: 'Telegram',
-    description: 'Verify your Telegram account and activity.',
-    icon: <MessageCircle size={24} />,
+    id: 'twitter',
+    title: 'Twitter',
+    description: 'Verify your Twitter (X) account. Account must be at least 30 days old.',
+    icon: <Twitter size={24} />,
     scoreWeight: 10,
     status: StampStatus.LOCKED,
-    provider: 'telegram'
+    provider: 'twitter'
   },
   {
     id: 'solana',
@@ -97,14 +93,7 @@ const INITIAL_STAMPS: Stamp[] = [
   }
 ];
 
-// Map provider id -> UI (title, description, icon) so contract stamps show same platforms as INITIAL_STAMPS
-const PROVIDER_UI: Record<string, { id: string; title: string; description: string; icon: React.ReactNode }> = {};
-INITIAL_STAMPS.forEach(s => {
-  const key = s.provider === 'ethereum' ? 'ethereum' : s.id;
-  PROVIDER_UI[key] = { id: s.id, title: s.title, description: s.description, icon: s.icon };
-});
-PROVIDER_UI.eth_wallet = PROVIDER_UI.ethereum || PROVIDER_UI.eth_wallet;
-
+// Only these four apps; never use contract stamps (no "Stamp N", no duplicates).
 // --- Sub-components ---
 
 const Header = ({ 
@@ -389,7 +378,6 @@ type DashboardTab = 'stamps' | 'leaderboard' | 'ecosystem';
 const Dashboard = ({ user, onVerifyStamp }: { user: UserState; onVerifyStamp: (id: string, success: boolean) => void }) => {
   const { publicKey } = useWallet();
   const { hasPassport, createPassport, loading: passportLoading, checkPassport } = usePassport();
-  const { stamps: aleoStamps, userStamps = [], loading: stampsLoading } = useStamps();
   const { verifications, getTotalScore } = useVerification(publicKey || undefined);
   const [stamps, setStamps] = useState<Stamp[]>(INITIAL_STAMPS);
   const [activeTab, setActiveTab] = useState<DashboardTab>('stamps');
@@ -403,49 +391,22 @@ const Dashboard = ({ user, onVerifyStamp }: { user: UserState; onVerifyStamp: (i
   const [transactionFunctionName, setTransactionFunctionName] = useState<string | undefined>(undefined);
   const [isPageLoading, setIsPageLoading] = useState(false);
 
-  // Map Aleo stamps to UI stamps: use platform_id so we show same platforms as locally (Discord, Telegram, Solana, EVM)
+  // Always use exactly these 4 apps (Discord, Telegram, Solana, EVM). Never show contract stamps.
   useEffect(() => {
-    let nextStamps: Stamp[];
-    if (aleoStamps.length > 0) {
-      nextStamps = aleoStamps.map((aleoStamp) => {
-        const provider = platformIdToProvider(aleoStamp.platform_id);
-        const ui = provider ? PROVIDER_UI[provider] || PROVIDER_UI[provider === 'eth_wallet' ? 'ethereum' : provider] : null;
-        const isEarned = userStamps.includes(aleoStamp.stamp_id);
-        const provId = provider || 'discord';
-        const verification = verifications[provId] || verifications[aleoStamp.stamp_id];
-        const isVerified = isEarned || (verification?.verified && verification.status === 'connected');
-        return {
-          id: ui?.id || `stamp_${aleoStamp.stamp_id}`,
-          title: ui?.title || aleoStamp.name || `Stamp ${aleoStamp.stamp_id}`,
-          description: ui?.description || aleoStamp.description || '',
-          icon: ui?.icon || <Globe size={24} />,
-          scoreWeight: aleoStamp.points,
-          status: isVerified ? StampStatus.VERIFIED : StampStatus.LOCKED,
-          provider: provId === 'eth_wallet' ? 'ethereum' : provId,
-          stamp_id: aleoStamp.stamp_id,
-          name: aleoStamp.name,
-          category: aleoStamp.category,
-          points: aleoStamp.points,
-          is_active: aleoStamp.is_active,
-          earned: isEarned,
-        };
-      });
-    } else {
-      nextStamps = INITIAL_STAMPS.map(stamp => {
-        const verification = verifications[stamp.provider] || verifications[stamp.id];
-        const isVerified = verification?.verified && verification.status === 'connected';
-        return {
-          ...stamp,
-          status: isVerified ? StampStatus.VERIFIED : (user.stamps[stamp.id] || StampStatus.LOCKED)
-        };
-      });
-    }
+    const nextStamps = INITIAL_STAMPS.map(stamp => {
+      const verification = verifications[stamp.provider] || verifications[stamp.id];
+      const isVerified = verification?.verified && verification.status === 'connected';
+      return {
+        ...stamp,
+        status: isVerified ? StampStatus.VERIFIED : (user.stamps[stamp.id] || StampStatus.LOCKED)
+      };
+    });
     setStamps(prev => {
       if (prev.length !== nextStamps.length) return nextStamps;
       const same = prev.every((s, i) => s.id === nextStamps[i].id && s.status === nextStamps[i].status);
       return same ? prev : nextStamps;
     });
-  }, [aleoStamps, userStamps, user.stamps, verifications]);
+  }, [user.stamps, verifications]);
 
   // Update user score from verifications
   useEffect(() => {
@@ -483,15 +444,17 @@ const Dashboard = ({ user, onVerifyStamp }: { user: UserState; onVerifyStamp: (i
   const scoreColor = user.score > 20 ? 'text-white' : 'text-neutral-600';
   const progressWidth = Math.min(user.score, 100);
 
-  // Prepare stamp options for selection modal
-  const stampOptions: StampOption[] = INITIAL_STAMPS.map(stamp => ({
-    id: stamp.id,
-    title: stamp.title,
-    description: stamp.description,
-    icon: stamp.icon,
-    provider: stamp.provider,
-    scoreWeight: stamp.scoreWeight
-  }));
+  // Prepare stamp options for selection modal (exclude EVM / coming soon)
+  const stampOptions: StampOption[] = INITIAL_STAMPS
+    .filter(stamp => !('comingSoon' in stamp) || !stamp.comingSoon)
+    .map(stamp => ({
+      id: stamp.id,
+      title: stamp.title,
+      description: stamp.description,
+      icon: stamp.icon,
+      provider: stamp.provider,
+      scoreWeight: stamp.scoreWeight
+    }));
 
   const handleStampsSelected = async (selectedIds: string[]) => {
     setSelectedStamps(selectedIds);
@@ -511,7 +474,7 @@ const Dashboard = ({ user, onVerifyStamp }: { user: UserState; onVerifyStamp: (i
     setSelectedStamps([]);
   };
 
-  if (stampsLoading || passportLoading) {
+  if (passportLoading) {
     return <GlobalLoader fullScreen message="Loading..." />;
   }
 

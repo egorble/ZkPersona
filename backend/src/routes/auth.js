@@ -2,6 +2,7 @@ import express from 'express';
 import crypto from 'crypto';
 import { discordAuth, discordCallback, discordStatus } from '../providers/discord.js';
 import { telegramAuth, telegramCallback, telegramStatus } from '../providers/telegram.js';
+import { twitterAuth, twitterCallback, twitterStatus } from '../providers/twitter.js';
 // TikTok removed - no longer supported
 import { evmAuth, evmCallback, evmStatus } from '../providers/evm.js';
 import { solanaAuth, solanaCallback, solanaStatus } from '../providers/solana.js';
@@ -241,6 +242,11 @@ const handleAuthStatus = async (req, res, provider, statusHandler) => {
 router.get('/discord/start', (req, res) => handleAuthStart(req, res, 'discord', discordAuth));
 router.get('/discord/callback', (req, res) => handleAuthCallback(req, res, 'discord', discordCallback));
 router.get('/discord/status', (req, res) => handleAuthStatus(req, res, 'discord', discordStatus));
+
+// Twitter OAuth (popup flow like Discord)
+router.get('/twitter/start', (req, res) => handleAuthStart(req, res, 'twitter', twitterAuth));
+router.get('/twitter/callback', (req, res) => handleAuthCallback(req, res, 'twitter', twitterCallback));
+router.get('/twitter/status', (req, res) => handleAuthStatus(req, res, 'twitter', twitterStatus));
 
 // Telegram: special flow — don't redirect popup to t.me; show instructions + open bot in new tab, user closes popup
 router.get('/telegram/start', async (req, res) => {

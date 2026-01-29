@@ -104,8 +104,8 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
       return;
     }
 
-    // Handle OAuth providers (Discord, Telegram) - Popup flow
-    if (['discord', 'telegram'].includes(stampId)) {
+    // Handle OAuth providers (Discord, Twitter) - Popup flow
+    if (['discord', 'twitter'].includes(stampId)) {
       try {
         setIsVerifying(stampId);
         setIsLoading(true);
@@ -421,7 +421,7 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
                 const verificationId = stampId === 'eth_wallet' ? 'ethereum' : stampId;
                 const verification = getVerification(verificationId);
                 const isConnected = verification?.verified && verification.status === 'connected';
-                const canClaim = verification?.commitment && ['telegram', 'solana', 'discord'].includes(stampId);
+                const canClaim = verification?.commitment && ['twitter', 'solana', 'discord'].includes(stampId);
                 return !isConnected || canClaim;
               });
 
@@ -505,7 +505,7 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
                               ))}
                             </div>
                           )}
-                          {['telegram', 'solana', 'discord'].includes(stampId) && (verification?.commitment || verificationResults[stampId]?.commitment) && (
+                          {['twitter', 'solana', 'discord'].includes(stampId) && (verification?.commitment || verificationResults[stampId]?.commitment) && (
                             <>
                               <div className="mt-3 p-2 bg-green-900/20 border border-green-700/30 rounded text-xs text-green-300 font-mono">
                                 Claim points to add them to your wallet on-chain.
@@ -605,7 +605,7 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
       {/* Success modal: "Connected successfully" + Claim points button (no auto-claim) */}
       {successModalProvider && (() => {
         const res = verificationResults[successModalProvider];
-        const name = successModalProvider === 'discord' ? 'Discord' : successModalProvider === 'telegram' ? 'Telegram' : 'Solana';
+        const name = successModalProvider === 'discord' ? 'Discord' : successModalProvider === 'twitter' ? 'Twitter' : 'Solana';
         return (
           <div
             className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80"
