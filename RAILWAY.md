@@ -1,19 +1,26 @@
 # Деплой Backend на Railway
 
+> **Якщо збірка впала з:**  
+> `Railpack could not determine how to build the app` або в логах видно `./` з папками `backend/`, `frontend/` — **не встановлено Root Directory**.  
+> Нижче крок 2 обовʼязково зробити **до** першого деплою (або одразу після створення сервісу).
+
 ## 1. Створити проект
 
 1. Зайти на [railway.app](https://railway.app) → **Login** (GitHub).
 2. **New Project** → **Deploy from GitHub repo**.
 3. Обрати репозиторій **egorble/ZkPersona** (або свій fork).
 
-## 2. Root Directory (обовʼязково)
+## 2. Root Directory — обовʼязково (інакше build впаде)
 
-1. В проекті натиснути на створений **Service**.
-2. **Settings** → секція **Source**.
-3. **Root Directory:** вказати `backend`.
-4. **Save**.
+1. В проекті натиснути на створений **Service** (прямокутник з назвою сервісу).
+2. Відкрити **Settings** (іконка шестерні або вкладка).
+3. Знайти секцію **Source** (або **Build**).
+4. Поле **Root Directory** — ввести **саме** `backend` (без слешу).
+5. Натиснути **Save** / **Update**.
 
-Без цього Railway не знайде `package.json` і збірка впаде.
+Після збереження зробіть **Redeploy** (Deployments → три крапки біля останнього деплою → Redeploy, або новий commit у репо).
+
+Без цього Railway збирає з кореня репо, не бачить `package.json` (він у `backend/`) і показує: *"Railpack could not determine how to build the app"*.
 
 ## 3. Змінні середовища
 
@@ -69,3 +76,11 @@ curl https://YOUR-RAILWAY-URL/config/status
 ```
 
 Після push у `main` Railway автоматично перезбирає і деплоїть бекенд.
+
+---
+
+## Помилка: "Railpack could not determine how to build the app"
+
+**Причина:** збірка йде з кореня репо (там немає `package.json`).
+
+**Що зробити:** у сервісі Railway → **Settings** → **Source** → **Root Directory** = `backend` → **Save** → **Redeploy**.

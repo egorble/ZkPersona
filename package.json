@@ -1,0 +1,12 @@
+{
+  "name": "zkpersona-root",
+  "private": true,
+  "description": "Root for Railway: Railpack detects Node and runs backend",
+  "scripts": {
+    "build": "cd backend && npm ci",
+    "start": "cd backend && npm start"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
