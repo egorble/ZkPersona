@@ -10,7 +10,8 @@ import {
   MessageCircle,
   Video, 
   MessageSquare, 
-  AlertCircle
+  AlertCircle,
+  Globe
 } from 'lucide-react';
 import { useWallet } from '@demox-labs/aleo-wallet-adapter-react';
 import { useVerification } from '../hooks/useVerification';
