@@ -366,7 +366,12 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
         resultCommitment: result?.commitment
       };
       console.error(`[Claim Points] Failed to claim points for ${provider}. Reason: ${error.message || 'Unknown error'}`, errorDetails);
-      alert(error.message || 'Failed to claim points');
+      const msg = error?.message || 'Failed to claim points';
+      const isContractNotInit = msg.toLowerCase().includes('contract not initialized');
+      const userMessage = isContractNotInit
+        ? 'Verification saved.\n\nOn-chain claim failed: contract not initialized. Go to Admin → run "Initialize contract" (one-time), then try "Claim Points" again.'
+        : msg;
+      alert(userMessage);
       setClaimingProvider(null);
     }
   };
