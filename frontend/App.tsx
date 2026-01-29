@@ -16,6 +16,7 @@ import { TransactionStatus as TransactionStatusComponent, TransactionStatusType 
 import { VerificationInstructions } from './src/components/VerificationInstructions';
 import { WalletRequiredModal } from './src/components/WalletRequiredModal';
 import { useVerification } from './src/hooks/useVerification';
+import { platformIdToProvider } from './src/utils/platformMapping';
 import { GlobalLoader } from './src/components/GlobalLoader';
 import { OAuthCallback } from './src/pages/OAuthCallback';
 import { VerifyCallback } from './src/pages/VerifyCallback';
@@ -95,6 +96,14 @@ const INITIAL_STAMPS: Stamp[] = [
     comingSoon: true
   }
 ];
+
+// Map provider id -> UI (title, description, icon) so contract stamps show same platforms as INITIAL_STAMPS
+const PROVIDER_UI: Record<string, { id: string; title: string; description: string; icon: React.ReactNode }> = {};
+INITIAL_STAMPS.forEach(s => {
+  const key = s.provider === 'ethereum' ? 'ethereum' : s.id;
+  PROVIDER_UI[key] = { id: s.id, title: s.title, description: s.description, icon: s.icon };
+});
+PROVIDER_UI.eth_wallet = PROVIDER_UI.ethereum || PROVIDER_UI.eth_wallet;
 
 // --- Sub-components ---
 
@@ -394,34 +403,25 @@ const Dashboard = ({ user, onVerifyStamp }: { user: UserState; onVerifyStamp: (i
   const [transactionFunctionName, setTransactionFunctionName] = useState<string | undefined>(undefined);
   const [isPageLoading, setIsPageLoading] = useState(false);
 
-  // Map Aleo stamps to UI stamps (only update when content actually changes to avoid loop)
+  // Map Aleo stamps to UI stamps: use platform_id so we show same platforms as locally (Discord, Telegram, Solana, EVM)
   useEffect(() => {
     let nextStamps: Stamp[];
     if (aleoStamps.length > 0) {
-      const iconMap = [
-        <Globe size={24} />,
-        <Twitter size={24} />,
-        <Bitcoin size={24} />,
-        <Github size={24} />,
-        <ScanFace size={24} />,
-        <BrainCircuit size={24} />,
-      ];
-      const providerMap: Array<'ethereum' | 'discord' | 'telegram' | 'solana'> = [
-        'ethereum', 'discord', 'telegram', 'solana'
-      ];
-      nextStamps = aleoStamps.map((aleoStamp, index) => {
+      nextStamps = aleoStamps.map((aleoStamp) => {
+        const provider = platformIdToProvider(aleoStamp.platform_id);
+        const ui = provider ? PROVIDER_UI[provider] || PROVIDER_UI[provider === 'eth_wallet' ? 'ethereum' : provider] : null;
         const isEarned = userStamps.includes(aleoStamp.stamp_id);
-        const provider = providerMap[index % providerMap.length] || 'discord';
-        const verification = verifications[provider] || verifications[aleoStamp.stamp_id];
+        const provId = provider || 'discord';
+        const verification = verifications[provId] || verifications[aleoStamp.stamp_id];
         const isVerified = isEarned || (verification?.verified && verification.status === 'connected');
         return {
-          id: `stamp_${aleoStamp.stamp_id}`,
-          title: aleoStamp.name,
-          description: aleoStamp.description,
-          icon: iconMap[index % iconMap.length] || <Globe size={24} />,
+          id: ui?.id || `stamp_${aleoStamp.stamp_id}`,
+          title: ui?.title || aleoStamp.name || `Stamp ${aleoStamp.stamp_id}`,
+          description: ui?.description || aleoStamp.description || '',
+          icon: ui?.icon || <Globe size={24} />,
           scoreWeight: aleoStamp.points,
           status: isVerified ? StampStatus.VERIFIED : StampStatus.LOCKED,
-          provider: provider,
+          provider: provId === 'eth_wallet' ? 'ethereum' : provId,
           stamp_id: aleoStamp.stamp_id,
           name: aleoStamp.name,
           category: aleoStamp.category,
