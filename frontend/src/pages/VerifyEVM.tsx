@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Loader2, Wallet } from 'lucide-react';
 import { connectEVMWallet, signMessage } from '../utils/evmWallet';
-import { submitEVMSignature } from '../utils/backendAPI';
+import { verifyWallet } from '../utils/backendAPI';
 
 export const VerifyEVM: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -12,18 +12,18 @@ export const VerifyEVM: React.FC = () => {
 
   useEffect(() => {
     const sessionId = searchParams.get('session');
-    const passportId = searchParams.get('passportId');
+    const walletId = searchParams.get('walletId') || searchParams.get('passportId');
 
-    if (!sessionId || !passportId) {
-      setError('Missing session or passport ID');
+    if (!sessionId || !walletId) {
+      setError('Missing session or wallet ID');
       setStatus('error');
       return;
     }
 
-    handleEVMAuth(sessionId, passportId);
+    handleEVMAuth(sessionId, walletId);
   }, [searchParams, navigate]);
 
-  const handleEVMAuth = async (sessionId: string, passportId: string) => {
+  const handleEVMAuth = async (sessionId: string, walletId: string) => {
     try {
       // Step 1: Connect wallet
       setStatus('connecting');
@@ -39,7 +39,7 @@ export const VerifyEVM: React.FC = () => {
       // Step 2: Create SIWE message
       const domain = window.location.host;
       const origin = window.location.origin;
-      const statement = `Verify wallet ownership for Passport ${passportId}`;
+      const statement = 'Verify wallet ownership for this app';
       const message = `${domain} wants you to sign in with your Ethereum account:\n${walletInfo.address}\n\n${statement}\n\nURI: ${origin}\nVersion: 1\nChain ID: ${walletInfo.chainId}\nNonce: ${sessionId}\nIssued At: ${new Date().toISOString()}`;
 
       // Step 3: Request signature
@@ -50,12 +50,21 @@ export const VerifyEVM: React.FC = () => {
       localStorage.setItem('wallet_signature', signature);
       localStorage.setItem('wallet_message', message);
 
-      // Step 4: Submit to backend
+      // Step 4: Verify wallet (sync endpoint - no sessions needed)
       setStatus('submitting');
-      await submitEVMSignature(sessionId, walletInfo.address, signature, message);
+      const result = await verifyWallet('evm', walletInfo.address, signature, message, walletId);
 
-      // Redirect to callback page to poll status
-      navigate(`/verify/callback?provider=evm&session=${sessionId}`);
+      // Store result in localStorage for parent component to pick up
+      localStorage.setItem(`verification_result_evm`, JSON.stringify({
+        ...result,
+        commitment: result.commitment || ''
+      }));
+
+      // Dispatch event to notify parent component
+      window.dispatchEvent(new Event('verification-updated'));
+
+      // Redirect back to main app
+      navigate('/');
     } catch (err: any) {
       if (err.message?.includes('rejected') || err.message?.includes('cancelled')) {
         navigate('/');

@@ -12,9 +12,12 @@ import { PROGRAM_ID } from "../deployed_program";
 
 const network = WalletAdapterNetwork.TestnetBeta;
 
-// RPC endpoints for Aleo testnet
+// RPC endpoints: we deploy on Provable testnet
 const ALEO_RPC_URL = "https://api.explorer.aleo.org/v1";
-const ALEO_TESTNET_RPC = "https://api.explorer.aleo.org/v1/testnet3";
+const ALEO_TESTNET3_RPC = "https://api.explorer.aleo.org/v1/testnet3";
+const PROVABLE_TESTNET_RPC = "https://api.explorer.provable.com/v1/testnet";
+// JSON-RPC for getMappingValue (Leo RPC API); Testnet Beta used by Leo Wallet
+const ALEO_TESTNETBETA_RPC = "https://testnetbeta.aleorpc.com";
 
 export interface PublicPassport {
     owner: string;
@@ -27,6 +30,7 @@ export interface PublicPassport {
 
 export interface PublicStamp {
     stamp_id: number;
+    platform_id: number;  // u8 in contract; used to match provider for claim_social_stamp
     name: string;
     description: string;
     category: string;
@@ -51,6 +55,8 @@ function parseStructResponse(response: string): Record<string, any> {
                 parsed[key] = parseInt(value.replace('u32', ''), 10);
             } else if (value.endsWith('u64')) {
                 parsed[key] = parseInt(value.replace('u64', ''), 10);
+            } else if (value.endsWith('u8')) {
+                parsed[key] = parseInt(value.replace('u8', ''), 10);
             } else if (value.endsWith('field')) {
                 parsed[key] = value.replace('field', '').trim();
             } else if (value === 'true' || value === 'false') {
@@ -64,25 +70,24 @@ function parseStructResponse(response: string): Record<string, any> {
         
         return parsed;
     } catch (error) {
-        console.error("[AleoAPI] Failed to parse struct response:", error);
         return {};
     }
 }
 
-// Call view function via RPC
+// Call view function via RPC (Provable REST execute)
+// NOTE: get_stamp_metadata / get_stamp do not exist in our program; use getMappingValue instead.
 async function callViewFunction(
     functionName: string,
     inputs: any[]
 ): Promise<any> {
     try {
-        const rpcUrl = `${ALEO_TESTNET_RPC}/program/${PROGRAM_ID}/execute/${functionName}`;
+        const rpcUrl = `${PROVABLE_TESTNET_RPC}/program/${PROGRAM_ID}/execute/${functionName}`;
         
-        // Convert inputs to proper format
         const formattedInputs = inputs.map(input => {
             if (typeof input === 'string' && input.startsWith('aleo1')) {
-                return input; // Address
+                return input;
             } else if (typeof input === 'number') {
-                return `${input}u32`; // Assume u32 for numbers
+                return `${input}u32`;
             } else {
                 return String(input);
             }
@@ -90,32 +95,55 @@ async function callViewFunction(
         
         const response = await fetch(rpcUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                inputs: formattedInputs,
-            }),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ inputs: formattedInputs }),
         });
         
-        if (!response.ok) {
-            // Handle 404 specifically (contract not deployed) - silent
-            if (response.status === 404) {
-                // Don't log 404s - they're expected when contract is not deployed
-                return null;
-            }
-            // Only log non-404 errors
-            console.warn(`[AleoAPI] RPC call failed (${response.status}): ${functionName} - ${response.statusText}`);
-            return null;
+        if (!response.ok) return null;
+        return await response.json();
+    } catch {
+        return null;
+    }
+}
+
+// getMappingValue via Leo JSON-RPC (program mapping read)
+// Tries ALEO_TESTNETBETA_RPC first, then Provable REST (contract may be on Provable testnet).
+async function getMappingValue(
+    programId: string,
+    mappingName: string,
+    key: string
+): Promise<string | null> {
+    try {
+        const res = await fetch(ALEO_TESTNETBETA_RPC, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                jsonrpc: '2.0',
+                id: 1,
+                method: 'getMappingValue',
+                params: { program_id: programId, mapping_name: mappingName, key },
+            }),
+        });
+        const data = await res.json();
+        if (!data.error && data.result !== undefined) {
+            const result = typeof data.result === 'string' ? data.result : null;
+            if (result) return result;
         }
-        
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        // Don't log 404s or expected errors
-        if (error instanceof Error && !error.message.includes("404") && !error.message.includes("RPC call failed")) {
-            console.debug(`[AleoAPI] Failed to call ${functionName}:`, error.message);
-        }
+    } catch {
+        // ignore
+    }
+    // Fallback: Provable REST API (contract may be deployed on Provable testnet)
+    try {
+        const keyPath = key.replace(/u32$/i, '').replace(/u64$/i, '');
+        const url = `${PROVABLE_TESTNET_RPC}/program/${programId}/mapping/${mappingName}/${keyPath}`;
+        const r = await fetch(url);
+        if (!r.ok) return null;
+        const body = await r.json();
+        if (typeof body === 'string') return body;
+        if (body && typeof body.value === 'string') return body.value;
+        if (body && body.result !== undefined) return typeof body.result === 'string' ? body.result : null;
+        return null;
+    } catch {
         return null;
     }
 }
@@ -163,46 +191,42 @@ export const getStampPublic = async (stampId: number): Promise<PublicStamp | nul
 // Checking if a user has a stamp publicly would violate privacy.
 // Proof system verifies stamp ownership without revealing it.
 
-// Get stamp count (view function) - PUBLIC metadata
+/** Legacy: get_stamp_count often 404. Prefer getAllStamps (uses getStampMetadata in loop). */
 export const getStampCount = async (): Promise<number> => {
     try {
-        // get_stamp_count is a view function with no inputs
         const result = await callViewFunction("get_stamp_count", []);
-        
-        if (!result || !result.output) {
-            return 0;
-        }
-        
-        // Parse u32 output
+        if (!result || !result.output) return 0;
         const match = String(result.output).match(/(\d+)u32/);
         return match ? parseInt(match[1], 10) : 0;
-        } catch (error) {
-            // Contract not deployed - return 0 silently
-            return 0;
-        }
+    } catch {
+        return 0;
+    }
 };
 
-// Get stamp metadata (public info only)
+// Get stamp metadata via mapping read (getMappingValue RPC).
+// Contract has no get_stamp_metadata view; we read mapping "stamps" directly.
 export const getStampMetadata = async (stampId: number): Promise<PublicStamp | null> => {
     try {
-        const result = await callViewFunction("get_stamp_metadata", [stampId]);
-        
-        if (!result || !result.output) {
-            return null;
-        }
-        
-        const parsed = parseStructResponse(result.output);
-        
+        const raw = await getMappingValue(PROGRAM_ID, "stamps", `${stampId}u32`);
+        if (!raw || typeof raw !== 'string' || raw.length < 2) return null;
+
+        const parsed = parseStructResponse(raw);
+        const points = typeof parsed.points === 'number' && !Number.isNaN(parsed.points) ? parsed.points : 0;
+        const created = typeof parsed.created_at === 'number' && !Number.isNaN(parsed.created_at) ? parsed.created_at : 0;
+        const sid = typeof parsed.stamp_id === 'number' && !Number.isNaN(parsed.stamp_id) ? parsed.stamp_id : stampId;
+        const platformId = typeof parsed.platform_id === 'number' && !Number.isNaN(parsed.platform_id) ? parsed.platform_id : 0;
+
         return {
-            stamp_id: parsed.stamp_id || stampId,
-            name: "",  // Name removed from public metadata (privacy)
-            description: "",  // Description removed from public metadata
-            category: "",  // Category removed from public metadata
-            points: parsed.points || 0,
-            is_active: parsed.is_active || false,
-            created_at: parsed.created_at || 0,
+            stamp_id: sid,
+            platform_id: platformId,
+            name: "",
+            description: "",
+            category: "",
+            points,
+            is_active: parsed.is_active === true || parsed.is_active === 'true',
+            created_at: created,
         };
-    } catch (error) {
+    } catch {
         return null;
     }
 };
@@ -225,28 +249,24 @@ export const checkAdminStatus = async (address: string): Promise<boolean> => {
 };
 
 // Get all stamp metadata (public definitions only)
+// If program not deployed / mapping 404, return [] after first failed request to avoid console spam.
+const MAX_STAMP_IDS = 64;
+
 export const getAllStamps = async (): Promise<PublicStamp[]> => {
+    const stamps: PublicStamp[] = [];
     try {
-        const stampCount = await getStampCount();
-        const stamps: PublicStamp[] = [];
-        
-        // Fetch each stamp metadata by ID
-        for (let i = 1; i <= stampCount; i++) {
-            try {
-                const stamp = await getStampMetadata(i);
-                if (stamp) {
-                    stamps.push(stamp);
-                }
-            } catch (error) {
-                console.warn(`[AleoAPI] Failed to fetch stamp ${i}:`, error);
-            }
+        const first = await getStampMetadata(1);
+        if (!first) return []; // Program not deployed or no stamps — avoid repeated 404s
+        stamps.push(first);
+        for (let i = 2; i <= MAX_STAMP_IDS; i++) {
+            const stamp = await getStampMetadata(i);
+            if (stamp) stamps.push(stamp);
+            else break;
         }
-        
         return stamps;
-        } catch (error) {
-            // Contract not deployed - return empty array silently
-            return [];
-        }
+    } catch {
+        return [];
+    }
 };
 
 // NOTE: getUserStamps REMOVED - user stamps are private records

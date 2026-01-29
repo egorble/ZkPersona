@@ -1,0 +1,7 @@
+{
+  "program_id": "zkpersona_passport_v5.aleo",
+  "network": "testnet",
+  "endpoint": "https://api.explorer.provable.com/v1",
+  "deploy_tx_id": "at12s6clltped7kp8k4jwk3xyn89mh5edur2yaef3ewqp9gs3au3vpqtnszz6",
+  "note": "Frontend updated to PROGRAM_ID = zkpersona_passport_v5.aleo. Call initialize(owner) once to create default stamps, then claim works."
+}

@@ -6,9 +6,10 @@ import { ethers } from 'ethers';
 import { verifyMessage } from 'ethers';
 import axios from 'axios';
 import crypto from 'crypto';
-import { saveVerification, saveSession, getSession, updateSession, hashToken } from '../database/index.js';
+import { saveSession, getSession, updateSession, hashToken } from '../database/index.js';
 import { calculateEVMScore } from '../scoring/evm.js';
 import { v4 as uuidv4 } from 'uuid';
+import { generateAleoCommitment } from '../utils/aleoField.js';
 
 /**
  * Fetch wallet data from Etherscan API
@@ -169,45 +170,22 @@ router.post('/verify', async (req, res) => {
     const walletData = await fetchWalletData(walletAddress);
     const scoreData = calculateEVMScore(walletData);
     
-    // Generate commitment for privacy
-    const platformId = 2; // EVM = 2
+    // Generate Aleo-compatible commitment for privacy
+    const platformId = 6; // EVM = 6 (per platformMapping.ts)
     const secretSalt = process.env.SECRET_SALT || 'zkpersona-secret-salt';
-    const commitmentInput = `${platformId}:${walletAddress.toLowerCase()}:${secretSalt}`;
-    const commitment = ethers.keccak256(ethers.toUtf8Bytes(commitmentInput)) + 'field';
+    const commitment = generateAleoCommitment(platformId, walletAddress.toLowerCase(), secretSalt);
     
-    // Save verification
-    await saveVerification(session.userId || walletAddress, 'evm', {
-      commitment: commitment, // PRIVACY: Use commitment, not providerAccountId
-      score: scoreData.score,
-      maxScore: scoreData.maxScore,
-      status: 'verified',
-      metadata: {
-        commitment: commitment,
-        score: scoreData.score,
-        maxScore: scoreData.maxScore,
-        criteria: scoreData.criteria || [],
-        // DO NOT store: address, walletData, signature (personal data)
-      },
-      expiresAt: null // Wallet verification doesn't expire
-    });
-    
-    // Update session
-    await updateSession(sessionId, {
-      status: 'verified',
-      stateData: {
-        ...session.stateData,
-        verified: true,
-        score: scoreData.score
-      }
-    });
+    // GITCOIN PASSPORT MODEL: НЕ зберігаємо верифікацію в БД!
+    // Просто повертаємо результат
     
     res.json({
       success: true,
       provider: 'evm',
-      walletAddress,
       score: scoreData.score,
+      commitment: commitment,
       maxScore: scoreData.maxScore,
       criteria: scoreData.criteria
+      // НЕ повертаємо: walletAddress (personal data)
     });
   } catch (error) {
     console.error('[Wallet] Verify error:', error);

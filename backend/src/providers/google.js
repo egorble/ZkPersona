@@ -1,6 +1,7 @@
 import axios from 'axios';
 import crypto from 'crypto';
 import { calculateGoogleScore } from '../scoring/google.js';
+import { generateAleoCommitment } from '../utils/aleoField.js';
 
 // Read env vars inside functions to ensure dotenv has loaded them
 const getGoogleConfig = () => {
@@ -75,11 +76,10 @@ export const googleCallback = async (query, session) => {
   // Calculate score
   const scoreResult = calculateGoogleScore(userInfo);
 
-  // Generate commitment hash (PRIVACY: use standard format)
-  const platformId = 3; // Google = 3 (per spec, adjust if needed)
+  // Generate Aleo-compatible commitment (PRIVACY: hashed with field modulo)
+  const platformId = 8; // Google = 8 (per platformMapping.ts)
   const secretSalt = process.env.SECRET_SALT || 'zkpersona-secret-salt';
-  const commitmentInput = `${platformId}:${userInfo.sub}:${secretSalt}`;
-  const commitment = crypto.createHash('sha256').update(commitmentInput).digest('hex') + 'field';
+  const commitment = generateAleoCommitment(platformId, userInfo.sub, secretSalt);
 
   return {
     verified: true,

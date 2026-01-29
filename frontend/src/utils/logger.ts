@@ -22,8 +22,8 @@ const log = {
             console.log(`[ADMIN] ➖ Removed admin: ${address.slice(0, 8)}...`),
     },
     user: {
-        createPassport: (address: string) => 
-            console.log(`[USER] 📘 Created passport: ${address.slice(0, 8)}...`),
+        setupComplete: (address: string) => 
+            console.log(`[USER] ✅ Setup complete: ${address.slice(0, 8)}...`),
         requestVerification: (stampId: string) => 
             console.log(`[USER] 🔍 Requested verification for stamp #${stampId}`),
     },
@@ -38,8 +38,12 @@ const log = {
     transaction: {
         signing: () => 
             console.log(`[TX] ✍️  Signing transaction...`),
-        confirmed: (txId: string) => 
-            console.log(`[TX] ✅ Confirmed: ${txId.slice(0, 16)}...`),
+        confirmed: (txId: string) => {
+            console.log(`[TX] ✅ Confirmed: ${txId}`);
+            if (!txId.startsWith("at")) {
+                console.warn(`[TX] This may be a request ID, not the on-chain tx id. Check Leo Wallet → History for the real transaction.`);
+            }
+        },
         failed: (error: string) => 
             console.error(`[TX] ❌ Failed: ${error}`),
     },

@@ -11,16 +11,16 @@ param(
     [string]$Network = "testnet"
 )
 
-Write-Host "🚀 Deploying ZK Passport Smart Contract..." -ForegroundColor Cyan
+Write-Host "Deploying ZK Passport Smart Contract..." -ForegroundColor Cyan
 Write-Host ""
 
 # Check if Leo CLI is installed
-Write-Host "📋 Checking prerequisites..." -ForegroundColor Yellow
+Write-Host "Checking prerequisites..." -ForegroundColor Yellow
 try {
     $leoVersion = leo --version 2>&1
-    Write-Host "✅ Leo CLI found: $leoVersion" -ForegroundColor Green
+    Write-Host "Leo CLI found: $leoVersion" -ForegroundColor Green
 } catch {
-    Write-Host "❌ Leo CLI not found! Please install Leo CLI first." -ForegroundColor Red
+    Write-Host "Leo CLI not found! Please install Leo CLI first." -ForegroundColor Red
     Write-Host "   Visit: https://aleo.org/get-started" -ForegroundColor Yellow
     exit 1
 }
@@ -31,7 +31,7 @@ if ([string]::IsNullOrEmpty($PrivateKey)) {
     $PrivateKey = $env:PRIVATE_KEY
     
     if ([string]::IsNullOrEmpty($PrivateKey)) {
-        Write-Host "❌ Private key not provided!" -ForegroundColor Red
+        Write-Host "Private key not provided!" -ForegroundColor Red
         Write-Host ""
         Write-Host "Usage:" -ForegroundColor Yellow
         Write-Host "  .\deploy-smart-contract.ps1 -PrivateKey 'APrivateKey1...'" -ForegroundColor White
@@ -40,26 +40,26 @@ if ([string]::IsNullOrEmpty($PrivateKey)) {
         Write-Host "  `$env:PRIVATE_KEY = 'APrivateKey1...'" -ForegroundColor White
         Write-Host "  .\deploy-smart-contract.ps1" -ForegroundColor White
         Write-Host ""
-        Write-Host "⚠️  WARNING: Never commit private keys to Git!" -ForegroundColor Red
+        Write-Host "WARNING: Never commit private keys to Git!" -ForegroundColor Red
         exit 1
     }
 }
 
 # Validate private key format
 if (-not $PrivateKey.StartsWith("APrivateKey")) {
-    Write-Host "⚠️  Warning: Private key format may be incorrect (should start with 'APrivateKey')" -ForegroundColor Yellow
+    Write-Host "Warning: Private key format may be incorrect (should start with 'APrivateKey')" -ForegroundColor Yellow
     $confirm = Read-Host "Continue anyway? (y/n)"
     if ($confirm -ne "y") {
         exit 1
     }
 }
 
-Write-Host "✅ Private key provided" -ForegroundColor Green
-Write-Host "✅ Network: $Network" -ForegroundColor Green
+Write-Host "Private key provided" -ForegroundColor Green
+Write-Host "Network: $Network" -ForegroundColor Green
 Write-Host ""
 
 # Step 1: Build the contract
-Write-Host "📦 Step 1: Building Leo contract..." -ForegroundColor Yellow
+Write-Host "Step 1: Building Leo contract..." -ForegroundColor Yellow
 Write-Host ""
 
 Push-Location src
@@ -68,21 +68,21 @@ try {
     leo build
     
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "❌ Build failed!" -ForegroundColor Red
+        Write-Host "Build failed!" -ForegroundColor Red
         Pop-Location
         exit 1
     }
     
-    Write-Host "✅ Build successful!" -ForegroundColor Green
+    Write-Host "Build successful!" -ForegroundColor Green
     Write-Host ""
 } catch {
-    Write-Host "❌ Build error: $_" -ForegroundColor Red
+    Write-Host "Build error: $_" -ForegroundColor Red
     Pop-Location
     exit 1
 }
 
 # Step 2: Deploy the contract
-Write-Host "🚀 Step 2: Deploying contract to $Network..." -ForegroundColor Yellow
+Write-Host "Step 2: Deploying contract to $Network..." -ForegroundColor Yellow
 Write-Host ""
 
 try {
@@ -90,22 +90,23 @@ try {
     $deployOutputDir = Join-Path $PSScriptRoot "deploy_output"
     New-Item -ItemType Directory -Force -Path $deployOutputDir | Out-Null
     
-    # Deploy using Leo CLI
-    Write-Host "Executing: leo deploy --network $Network --private-key [HIDDEN]" -ForegroundColor Gray
-    leo deploy --network $Network --private-key $PrivateKey
+    # Deploy using Leo CLI (--yes = no prompt, --broadcast = send to network)
+    $endpoint = "https://api.explorer.provable.com/v1"
+    Write-Host "Executing: leo deploy --network $Network --endpoint $endpoint --yes --broadcast --private-key [HIDDEN]" -ForegroundColor Gray
+    leo deploy --network $Network --endpoint $endpoint --yes --broadcast --private-key $PrivateKey
     
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "❌ Deployment failed!" -ForegroundColor Red
+        Write-Host "Deployment failed!" -ForegroundColor Red
         Pop-Location
         exit 1
     }
     
     Write-Host ""
-    Write-Host "✅ Deployment successful!" -ForegroundColor Green
+    Write-Host "Deployment successful!" -ForegroundColor Green
     Write-Host ""
     
 } catch {
-    Write-Host "❌ Deployment error: $_" -ForegroundColor Red
+    Write-Host "Deployment error: $_" -ForegroundColor Red
     Pop-Location
     exit 1
 } finally {
@@ -113,10 +114,10 @@ try {
 }
 
 # Step 3: Save deployment info
-Write-Host "📝 Step 3: Saving deployment information..." -ForegroundColor Yellow
+Write-Host "Step 3: Saving deployment information..." -ForegroundColor Yellow
 Write-Host ""
 
-$programId = "zkpersona_passport_v2.aleo"
+$programId = "zkpersona_passport_v4.aleo"
 $deploymentInfo = @{
     program_id = $programId
     network = $Network
@@ -129,15 +130,15 @@ $deploymentInfoJson = $deploymentInfo | ConvertTo-Json -Depth 3
 $deployOutputFile = Join-Path $deployOutputDir "deployment_info.json"
 $deploymentInfoJson | Out-File -FilePath $deployOutputFile -Encoding UTF8
 
-Write-Host "✅ Deployment info saved to: $deployOutputFile" -ForegroundColor Green
+Write-Host "Deployment info saved to: $deployOutputFile" -ForegroundColor Green
 Write-Host ""
 
 # Step 4: Instructions
-Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "✅ Deployment Complete!" -ForegroundColor Green
-Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "===============================================================" -ForegroundColor Cyan
+Write-Host "Deployment Complete!" -ForegroundColor Green
+Write-Host "===============================================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "📋 Next Steps:" -ForegroundColor Yellow
+Write-Host "Next Steps:" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "1. Get the Program ID from the deployment output above" -ForegroundColor White
 Write-Host "   (Usually in format: aleo1xxxxx.zkpersona_passport_v2)" -ForegroundColor Gray
@@ -152,17 +153,17 @@ Write-Host "   - Select your deployed contract" -ForegroundColor Gray
 Write-Host "   - Call 'initialize' function with your address" -ForegroundColor Gray
 Write-Host ""
 Write-Host "4. Test the contract:" -ForegroundColor White
-Write-Host "   - Create a passport" -ForegroundColor Gray
+Write-Host "   - Call claim_points (setup)" -ForegroundColor Gray
+Write-Host "   - Call claim_point (claim)" -ForegroundColor Gray
 Write-Host "   - Issue a stamp (as admin)" -ForegroundColor Gray
-Write-Host "   - Generate a proof" -ForegroundColor Gray
 Write-Host ""
-Write-Host "📚 Documentation:" -ForegroundColor Yellow
-Write-Host "   - Deployment guide: DEPLOY_SMART_CONTRACT.md" -ForegroundColor Gray
-Write-Host "   - Aleo Explorer: https://testnet.aleoscan.io/" -ForegroundColor Gray
+Write-Host "Documentation:" -ForegroundColor Yellow
+Write-Host '   - Deployment guide: DEPLOY_SMART_CONTRACT.md' -ForegroundColor Gray
+Write-Host '   - Aleo Explorer: https://testnet.aleoscan.io/' -ForegroundColor Gray
 Write-Host ""
-Write-Host "⚠️  IMPORTANT:" -ForegroundColor Red
-Write-Host "   - Never commit private keys to Git!" -ForegroundColor Red
-Write-Host "   - Keep your Program ID and Transaction ID safe" -ForegroundColor Red
-Write-Host "   - Verify deployment on Aleo Explorer" -ForegroundColor Red
-Write-Host ""
+Write-Host 'IMPORTANT:' -ForegroundColor Red
+Write-Host '   - Never commit private keys to Git' -ForegroundColor Red
+Write-Host '   - Keep your Program ID and Transaction ID safe' -ForegroundColor Red
+Write-Host '   - Verify deployment on Aleo Explorer' -ForegroundColor Red
+Write-Host ''
 

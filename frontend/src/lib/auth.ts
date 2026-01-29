@@ -92,16 +92,14 @@ export const signInWithOAuth = async (options: { provider: 'discord', options?: 
     throw new Error('Only Discord provider is supported');
   }
 
-  // Get passportId from localStorage
-  const passportId = localStorage.getItem('passport_id') || 
+  const walletId = localStorage.getItem('wallet_id') || 
                     localStorage.getItem('aleo_public_key')?.slice(0, 8) || 
                     'default';
 
-  // Redirect to backend OAuth endpoint (same as before, but with Propel-like interface)
   const redirectUrl = options.options?.redirectTo || window.location.origin;
   localStorage.setItem('discord_redirect_after_auth', redirectUrl);
   
-  const url = `${BACKEND_URL}/auth/discord/start?passportId=${encodeURIComponent(passportId)}`;
+  const url = `${BACKEND_URL}/auth/discord/start?walletId=${encodeURIComponent(walletId)}`;
   window.location.href = url;
 };
 

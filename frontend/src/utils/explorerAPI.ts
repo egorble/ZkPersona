@@ -3,7 +3,8 @@
 import { PROGRAM_ID } from "../deployed_program";
 
 const EXPLORER_API_BASE = "https://api.explorer.aleo.org/v1";
-const EXPLORER_TESTNET_URL = `${EXPLORER_API_BASE}/testnet3`;
+const EXPLORER_TESTNET3_URL = `${EXPLORER_API_BASE}/testnet3`;
+const PROVABLE_TESTNET_API = "https://api.explorer.provable.com/v1/testnet";
 
 export interface TransactionData {
     txId: string;
@@ -25,7 +26,7 @@ export interface TransactionData {
  */
 const FUNCTION_NAME_MAP: Record<string, string> = {
     // User functions
-    'create_passport': 'Create Passport',
+    'claim_points': 'Claim points',
     'aggregate_stamps': 'Aggregate Stamps',
     'prove_access': 'Prove Access',
     'claim_social_stamp': 'Connect Social Network', // Original: claim_social_stamp
@@ -55,13 +56,12 @@ const FUNCTION_NAME_MAP: Record<string, string> = {
  * - Execution data
  * - Program execution format
  * 
- * Returns the original function name (e.g., "claim_social_stamp", "claim_point", "create_passport")
+ * Returns the original function name (e.g., "claim_social_stamp", "claim_point", "claim_points")
  * without any program prefix.
  */
 function extractFunctionName(tx: any): string {
-    // Try direct function field first (most common)
     if (tx.function && typeof tx.function === 'string' && tx.function.length > 0) {
-        // Remove program prefix if present (e.g., "zkpersona_passport_v2.aleo/create_passport" -> "create_passport")
+        // Remove program prefix if present (e.g., "zkpersona_passport_v2.aleo/claim_points" -> "claim_points")
         const cleanName = tx.function.includes('/') 
             ? tx.function.split('/').pop() || tx.function
             : tx.function;
@@ -156,17 +156,18 @@ function formatFunctionName(name: string): string {
         .join(' ');
 }
 
-// Fetch transaction history for an address via Provable Explorer API
+// Fetch transaction history for an address
 export const fetchTransactionHistory = async (
     address: string,
-    network: string = "testnet3"
+    network: string = "testnet"
 ): Promise<TransactionData[]> => {
     try {
-        const explorerUrl = network === "testnet3" 
-            ? EXPLORER_TESTNET_URL 
+        const explorerUrl = network === "testnet"
+            ? PROVABLE_TESTNET_API
+            : network === "testnet3"
+            ? EXPLORER_TESTNET3_URL
             : `${EXPLORER_API_BASE}/${network}`;
-        
-        // Fetch transactions for the address
+
         const response = await fetch(
             `${explorerUrl}/address/${address}/transactions?limit=100`,
             {
@@ -227,7 +228,7 @@ export const fetchTransactionHistory = async (
                 type: tx.type || "unknown",
                 status: tx.status || "confirmed",
                 program: programId,
-                function: functionName, // Original function name from contract (e.g., "claim_social_stamp", "claim_point", "create_passport")
+                function: functionName, // Original function name from contract (e.g., "claim_social_stamp", "claim_point", "claim_points")
                 functionName: functionName, // Alias for consistency - always contains original snake_case name
             };
         }).filter((tx: TransactionData) => tx.txId);
@@ -242,13 +243,15 @@ export const fetchTransactionHistory = async (
 // Fetch transaction details by ID
 export const fetchTransactionDetails = async (
     txId: string,
-    network: string = "testnet3"
+    network: string = "testnet"
 ): Promise<TransactionData | null> => {
     try {
-        const explorerUrl = network === "testnet3" 
-            ? EXPLORER_TESTNET_URL 
+        const explorerUrl = network === "testnet"
+            ? PROVABLE_TESTNET_API
+            : network === "testnet3"
+            ? EXPLORER_TESTNET3_URL
             : `${EXPLORER_API_BASE}/${network}`;
-        
+
         const response = await fetch(
             `${explorerUrl}/transaction/${txId}`,
             {
@@ -283,8 +286,18 @@ export const fetchTransactionDetails = async (
     }
 };
 
-// Get transaction URL for explorer
-export const getTransactionUrl = (txId: string, network: string = "testnet3"): string => {
+/** Try Provable testnet first, then Aleo testnet3. Use when tx network is uncertain. */
+export const fetchTransactionDetailsFromAnyExplorer = async (txId: string): Promise<TransactionData | null> => {
+    const fromProvable = await fetchTransactionDetails(txId, "testnet");
+    if (fromProvable) return fromProvable;
+    return fetchTransactionDetails(txId, "testnet3");
+};
+
+// Get transaction URL for explorer (we deploy on Provable testnet)
+export const getTransactionUrl = (txId: string, network: string = "testnet"): string => {
+    if (network === "testnet") {
+        return `https://testnet.explorer.provable.com/transaction/${txId}`;
+    }
     if (network === "testnet3") {
         return `https://explorer.aleo.org/testnet3/transaction/${txId}`;
     }
@@ -295,13 +308,15 @@ export const getTransactionUrl = (txId: string, network: string = "testnet3"): s
 export const fetchProgramExecutions = async (
     programId: string,
     functionName?: string,
-    network: string = "testnet3"
+    network: string = "testnet"
 ): Promise<TransactionData[]> => {
     try {
-        const explorerUrl = network === "testnet3" 
-            ? EXPLORER_TESTNET_URL 
+        const explorerUrl = network === "testnet"
+            ? PROVABLE_TESTNET_API
+            : network === "testnet3"
+            ? EXPLORER_TESTNET3_URL
             : `${EXPLORER_API_BASE}/${network}`;
-        
+
         let url = `${explorerUrl}/program/${programId}/executions?limit=100`;
         if (functionName) {
             url += `&function=${functionName}`;

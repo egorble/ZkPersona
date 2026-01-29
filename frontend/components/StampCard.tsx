@@ -38,31 +38,22 @@ export const StampCard: React.FC<StampCardProps> = ({ stamp, onVerify, onOpenVer
 
     const providerId = stamp.provider || stamp.id;
     
-    console.log('[StampCard] handleVerify called:', {
-      stampId: stamp.id,
-      stampProvider: stamp.provider,
-      providerId,
-      hasCallback: !!onOpenVerificationInstructions
-    });
-    
     // For OAuth providers and EVM/Solana, open VerificationInstructions modal
-    const oauthProviders = ['google', 'twitter', 'github', 'discord', 'telegram', 'tiktok', 'ethereum', 'eth_wallet', 'solana', 'steam'];
+    const oauthProviders = ['google', 'twitter', 'github', 'discord', 'telegram', 'ethereum', 'eth_wallet', 'solana', 'steam'];
     if (oauthProviders.includes(providerId)) {
       // If callback provided, open VerificationInstructions with this stamp
       if (onOpenVerificationInstructions) {
-        console.log('[StampCard] Opening VerificationInstructions for:', providerId);
         onOpenVerificationInstructions(providerId);
         return;
       }
       // Fallback: show info message
-      console.warn('[StampCard] onOpenVerificationInstructions not provided, showing error');
       setError(`To verify ${providerId === 'ethereum' || providerId === 'eth_wallet' ? 'your wallet' : 'your account'}, please use the "Start Verification" button in the verification instructions.`);
       setTimeout(() => setError(null), 5000);
       return;
     }
 
     // For other providers, try direct verification
-    if (['telegram', 'tiktok', 'discord'].includes(providerId)) {
+    if (['telegram', 'discord'].includes(providerId)) {
       console.error('[StampCard] Attempted direct verification for OAuth provider:', providerId);
       setError(`Please use the instructions modal to verify ${providerId}.`);
       setTimeout(() => setError(null), 5000);
@@ -139,8 +130,12 @@ export const StampCard: React.FC<StampCardProps> = ({ stamp, onVerify, onOpenVer
       <div className={`
         relative group overflow-hidden border transition-all duration-300
         ${isVerified ? 'border-white/40 bg-white/5' : 'border-neutral-800 bg-surface hover:border-neutral-600'}
-        flex flex-col h-full
-      `}>
+        flex flex-col h-full hover:scale-[1.02] active:scale-[0.98] hover:shadow-lg hover:shadow-white/10
+      `}
+      style={{
+        animation: isLoading ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : undefined
+      }}
+      >
         <div className="p-6 flex-1">
           <div className="flex justify-between items-start mb-4">
             <div className={`p-2 rounded-none border border-neutral-800 ${isVerified ? 'bg-white text-black' : 'bg-surfaceHighlight text-white'}`}>
@@ -237,13 +232,23 @@ export const StampCard: React.FC<StampCardProps> = ({ stamp, onVerify, onOpenVer
         </div>
 
         <div className="p-6 pt-0 mt-auto">
-          {!isVerified && !isExpired ? (
+          {stamp.comingSoon ? (
+            <div className="w-full py-3 text-center border border-neutral-700 bg-neutral-900/50 text-xs uppercase tracking-widest font-mono text-neutral-500 cursor-not-allowed">
+              <div className="flex items-center justify-center gap-2">
+                <Clock className="w-4 h-4" />
+                Coming Soon
+              </div>
+            </div>
+          ) : !isVerified && !isExpired ? (
             <Button 
               variant="outline" 
               fullWidth 
               onClick={handleVerify} 
-              disabled={isLoading}
-              className="group-hover:bg-white group-hover:text-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isLoading || stamp.comingSoon}
+              className="group-hover:bg-white group-hover:text-black transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95 relative overflow-hidden"
+              style={{
+                animation: isLoading ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : undefined
+              }}
             >
               {isLoading ? (
                 <>
@@ -325,10 +330,12 @@ export const StampCard: React.FC<StampCardProps> = ({ stamp, onVerify, onOpenVer
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md transition-opacity duration-300"
           style={{ animation: 'fadeIn 0.3s ease-in' }}
+          onClick={() => setModalOpen(false)}
         >
           <div 
             className="bg-black border border-neutral-700 max-w-lg w-full p-8 relative shadow-2xl transition-all duration-300"
             style={{ animation: 'zoomIn 0.3s ease-out' }}
+            onClick={(e) => e.stopPropagation()}
           >
             <button 
               onClick={() => setModalOpen(false)} 
@@ -366,7 +373,15 @@ export const StampCard: React.FC<StampCardProps> = ({ stamp, onVerify, onOpenVer
                 </div>
               )}
 
-              <Button fullWidth disabled={loading || !aiInput} type="submit">
+              <Button 
+                fullWidth 
+                disabled={loading || !aiInput} 
+                type="submit"
+                className="hover:scale-105 active:scale-95"
+                style={{
+                  animation: loading ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : undefined
+                }}
+              >
                 {loading ? <Loader2 className="animate-spin w-4 h-4" /> : 'Submit for Analysis'}
               </Button>
             </form>

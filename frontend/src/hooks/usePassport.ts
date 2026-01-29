@@ -17,6 +17,7 @@ import { PROGRAM_ID } from "../deployed_program";
 import { usePassportRecords } from "./usePassportRecords";
 import { logger } from "../utils/logger";
 import { generateRandomNonce } from "../utils/aleo";
+import { requestTransactionWithRetry } from "../utils/walletUtils";
 
 type WalletAdapterExtras = {
     requestTransaction?: (tx: Transaction) => Promise<string>;
@@ -58,33 +59,27 @@ export const usePassport = () => {
 
         setLoading(true);
         try {
-            logger.user.createPassport(publicKey);
-
-            // Generate nonce client-side for true randomness
             const nonce = generateRandomNonce();
-
-            // Create passport transition returns PassportRecord (private)
             const transaction = Transaction.createTransaction(
                 publicKey,
                 network,
                 PROGRAM_ID,
-                "create_passport",
-                [nonce],  // Public nonce for nullifier generation
-                50000,
+                "claim_points",
+                [nonce],
+                50_000,
                 false
             );
 
-            const txId = await adapter.requestTransaction(transaction);
-            
-            if (txId) {
-                logger.transaction.confirmed(txId);
-                // PassportRecord is returned to wallet as private record
-                // Privacy preserved: no public state, no mapping
-                setHasPassport(true);
-                return txId;
-            }
-            
-            return null;
+            const txId = await requestTransactionWithRetry(adapter, transaction, {
+                timeout: 30_000,
+                maxRetries: 3
+            });
+            if (!txId) return null;
+
+            logger.transaction.confirmed(txId);
+            logger.user.setupComplete(publicKey);
+            setHasPassport(true);
+            return txId;
         } catch (error) {
             logger.transaction.failed(error instanceof Error ? error.message : String(error));
             throw error;

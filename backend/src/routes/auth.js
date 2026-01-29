@@ -2,41 +2,50 @@ import express from 'express';
 import crypto from 'crypto';
 import { discordAuth, discordCallback, discordStatus } from '../providers/discord.js';
 import { telegramAuth, telegramCallback, telegramStatus } from '../providers/telegram.js';
-import { tiktokAuth, tiktokCallback, tiktokStatus } from '../providers/tiktok.js';
+// TikTok removed - no longer supported
 import { evmAuth, evmCallback, evmStatus } from '../providers/evm.js';
 import { solanaAuth, solanaCallback, solanaStatus } from '../providers/solana.js';
-import { getSession, saveSession, updateSession, saveVerification, hashToken } from '../database/index.js';
+import { getSession, saveSession, updateSession, hashToken } from '../database/index.js';
 import { v4 as uuidv4 } from 'uuid';
+import { generateAleoCommitment } from '../utils/aleoField.js';
 
 const router = express.Router();
 
 // Generic route handler
 const handleAuthStart = async (req, res, provider, authHandler) => {
   try {
-    const { passportId } = req.query;
+    const walletId = req.query.walletId || req.query.passportId;
     
-    console.log(`[Auth] 🚀 ${provider} verification start requested:`, { passportId });
+    console.log(`[Auth] 🚀 ${provider} verification start requested:`, { walletId });
     
-    if (!passportId) {
-      console.error(`[Auth] ❌ ${provider} start: Missing passportId`);
-      return res.status(400).json({ error: 'passportId is required' });
+    if (!walletId) {
+      console.error(`[Auth] ❌ ${provider} start: Missing walletId`);
+      return res.status(400).json({ error: 'walletId is required' });
     }
 
-    // Create verification session in database
     const sessionId = `${provider}_${uuidv4()}`;
-    await saveSession(sessionId, provider, passportId, {
-      passportId,
+    await saveSession(sessionId, provider, walletId, {
+      walletId,
       status: 'in_progress'
     });
 
     console.log(`[Auth] ✅ ${provider} session created:`, sessionId);
-    console.log(`[Auth] 💾 Session saved with ID:`, sessionId, `for passportId:`, passportId);
+    console.log(`[Auth] 💾 Session saved with ID:`, sessionId, `for walletId:`, walletId);
 
-    // Get redirect URL from provider
-    const redirectUrl = await authHandler(passportId, sessionId);
+    const result = await authHandler(walletId, sessionId);
     
-    console.log(`[Auth] 🔗 ${provider} redirecting to provider:`, redirectUrl.substring(0, 100) + '...');
+    if (provider === 'evm' || provider === 'solana') {
+      return res.json({
+        sessionId,
+        walletId,
+        provider,
+        ...(typeof result === 'object' ? result : {})
+      });
+    }
     
+    // For OAuth providers, redirect to provider
+    const redirectUrl = typeof result === 'string' ? result : result.url || result.authUrl;
+    console.log(`[Auth] 🔗 ${provider} redirecting to provider:`, redirectUrl?.substring(0, 100) + '...');
     res.redirect(redirectUrl);
   } catch (error) {
     console.error(`[Auth] ❌ ${provider} start error:`, error);
@@ -88,10 +97,10 @@ const handleAuthCallback = async (req, res, provider, callbackHandler) => {
 
     console.log(`[Auth] ✅ ${provider} callback: Found session ${sessionId}, processing...`);
 
-    // Handle callback - pass session state data
     const result = await callbackHandler(req.query, {
       id: sessionId,
       provider: session.provider,
+      walletId: session.userId,
       passportId: session.userId,
       stateData: session.stateData
     });
@@ -102,75 +111,81 @@ const handleAuthCallback = async (req, res, provider, callbackHandler) => {
       provider
     });
     
-    // Save verification to database
-    // IMPORTANT: Use session.userId (passportId/walletAddress) as the main userId
-    // This ensures verifications are linked to the wallet, not the OAuth provider account
-    if (result.verified) {
-      // Use session.userId (passportId) as the primary userId for storing verification
-      // This is the wallet address/public key that the user connected with
-      const userId = session.userId || session.passportId;
-      
-      if (!userId) {
-        console.error(`[Auth] ❌ ${provider} verification: Missing userId (passportId) in session`);
-        throw new Error('Missing userId in session');
-      }
-      
-      // PRIVACY: Use commitment instead of providerAccountId
-      // Generate commitment from provider result (should already be in result.commitment)
-      const commitment = result.commitment || null;
-      
-      if (!commitment) {
-        console.warn(`[Auth] ⚠️ ${provider} verification: No commitment in result, generating from metadata`);
-        // Fallback: generate commitment if not provided
-        // This should not happen in normal flow, but handle gracefully
-      }
-      
-      console.log(`[Auth] 💾 Saving ${provider} verification:`, {
-        userId: userId ? userId.substring(0, 20) + '...' : 'MISSING',
-        userIdLength: userId?.length || 0,
-        commitment: commitment ? commitment.substring(0, 20) + '...' : 'none',
-        score: result.score,
-        sessionUserId: session.userId ? session.userId.substring(0, 20) + '...' : 'MISSING',
-        sessionPassportId: session.passportId ? session.passportId.substring(0, 20) + '...' : 'none'
-      });
-      
-      // PRIVACY: Store only commitment, score, and criteria - no personal data
-      await saveVerification(userId, provider, {
-        commitment: commitment,
-        score: result.score,
-        maxScore: result.maxScore || result.score,
-        status: 'verified',
-        metadata: {
-          commitment: commitment,
-          score: result.score,
-          maxScore: result.maxScore || result.score,
-          criteria: result.criteria || [],
-          // DO NOT store: email, username, profile, userId from provider
-        },
-        accessTokenHash: result.accessToken ? hashToken(result.accessToken) : null,
-        expiresAt: result.expiresAt || null
-      });
-      
-      console.log(`[Auth] ✅ ${provider} verification saved for userId: ${userId.substring(0, 10)}...`);
-      
-      // PRIVACY: Do NOT save profile data - violates anonymity
-      // Profile data should only exist in user's wallet as private records
+    // GITCOIN PASSPORT MODEL: НЕ зберігаємо верифікацію в БД!
+    // Scores зберігаються тільки на blockchain (Aleo) через claim_social_stamp
+    // Backend тільки розраховує score та повертає результат
+    
+    if (!result.verified) {
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head><title>Verification Failed</title></head>
+          <body>
+            <script>
+              if (window.opener && !window.opener.closed) {
+                try { window.opener.postMessage({ type: 'oauth-error', provider: '${provider}', error: 'Verification failed' }, '*'); } catch (e) { console.error(e); }
+              }
+              window.close();
+            </script>
+          </body>
+        </html>
+      `);
     }
     
-    // Update session with result
-    await updateSession(sessionId, {
-      status: result.verified ? 'verified' : 'failed',
-      stateData: {
-        ...session.stateData,
-        result,
-        completedAt: new Date()
-      }
-    });
-
-    // Redirect to frontend
-    const frontendUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify/callback?provider=${provider}&session=${sessionId}`;
-    console.log(`[Auth] 🔗 ${provider} redirecting to frontend:`, frontendUrl);
-    res.redirect(frontendUrl);
+    // Підготувати результат для frontend (БЕЗ особистих даних)
+    const frontendResult = {
+      provider: result.provider || provider,
+      score: result.score || 0,
+      commitment: result.commitment || null,
+      criteria: result.criteria || [],
+      maxScore: result.maxScore || result.score || 0
+      // НЕ повертаємо: userId, email, username, profile
+    };
+    
+    // PostMessage target '*' so opener receives regardless of port (5173 vs 5174 etc). Frontend validates structure & provider.
+    console.log(`[Auth] ${provider} sending result via postMessage (target *)`);
+    
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Verification Complete</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #1a1a1a; color: white; }
+            .container { text-align: center; padding: 2rem; }
+            .success { font-size: 3rem; margin-bottom: 1rem; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="success">✅</div>
+            <h2>Verification Complete</h2>
+            <p>You can close this window.</p>
+          </div>
+          <script>
+            (function() {
+              let messageSent = false;
+              const result = ${JSON.stringify(frontendResult)};
+              function send() {
+                if (messageSent) return;
+                if (window.opener && !window.opener.closed) {
+                  try {
+                    window.opener.postMessage({ type: 'oauth-complete', provider: '${provider}', result: result }, '*');
+                    messageSent = true;
+                    setTimeout(function() { if (window.opener && !window.opener.closed) window.close(); }, 1500);
+                  } catch (e) { console.error(e); setTimeout(send, 300); }
+                } else {
+                  document.body.querySelector('.container').innerHTML = '<div class="success">✅</div><h2>Verification Complete</h2><p>Return to the main tab to see results.</p>';
+                }
+              }
+              send();
+              setTimeout(send, 150);
+              setTimeout(send, 500);
+            })();
+          </script>
+        </body>
+      </html>
+    `);
   } catch (error) {
     console.error(`[Auth] ❌ ${provider} callback error:`, error.message, error.stack);
     res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify/callback?error=${encodeURIComponent(error.message)}`);
@@ -204,6 +219,7 @@ const handleAuthStatus = async (req, res, provider, statusHandler) => {
     const status = await statusHandler({
       id: sessionData.sessionId,
       provider: sessionData.provider,
+      walletId: sessionData.userId,
       passportId: sessionData.userId,
       stateData: sessionData.stateData,
       result: sessionData.stateData?.result
@@ -226,10 +242,82 @@ router.get('/discord/start', (req, res) => handleAuthStart(req, res, 'discord', 
 router.get('/discord/callback', (req, res) => handleAuthCallback(req, res, 'discord', discordCallback));
 router.get('/discord/status', (req, res) => handleAuthStatus(req, res, 'discord', discordStatus));
 
-// Telegram OAuth
-router.get('/telegram/start', (req, res) => handleAuthStart(req, res, 'telegram', telegramAuth));
+// Telegram: special flow — don't redirect popup to t.me; show instructions + open bot in new tab, user closes popup
+router.get('/telegram/start', async (req, res) => {
+  try {
+    const walletId = req.query.walletId || req.query.passportId;
+    if (!walletId) {
+      return res.status(400).json({ error: 'walletId is required' });
+    }
+    const sessionId = `telegram_${uuidv4()}`;
+    await saveSession(sessionId, 'telegram', walletId, { walletId, status: 'in_progress' });
+    const authUrl = await telegramAuth(walletId, sessionId);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const callbackUrl = `${frontendUrl}/verify/callback?provider=telegram&session=${sessionId}`;
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(`
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Telegram Verification</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #0a0a0a; color: #e5e5e5; margin: 0; padding: 24px; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .box { max-width: 420px; background: #171717; border: 1px solid #333; border-radius: 12px; padding: 24px; }
+  h1 { font-size: 1.25rem; margin: 0 0 16px; }
+  p { margin: 0 0 12px; font-size: 0.9rem; line-height: 1.5; color: #a3a3a3; }
+  ol { margin: 0 0 20px; padding-left: 20px; color: #a3a3a3; font-size: 0.9rem; }
+  a.btn { display: inline-block; background: #0088cc; color: #fff; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: 600; margin: 8px 8px 8px 0; }
+  a.btn:hover { background: #0099dd; }
+  button { background: #333; color: #e5e5e5; border: 1px solid #444; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
+  button:hover { background: #404040; }
+</style></head>
+<body>
+  <div class="box">
+    <h1>🔐 Telegram Verification</h1>
+    <p>Follow these steps:</p>
+    <ol>
+      <li>Click <strong>Open Telegram Bot</strong> below (opens in a new tab).</li>
+      <li>In Telegram, tap <strong>Start</strong> or send <strong>/start</strong> to the bot.</li>
+      <li>The bot will send you a message with a link — click <strong>Complete Verification</strong> in that message.</li>
+      <li>Return to the main site tab to see your result.</li>
+    </ol>
+    <p><strong>Note:</strong> The bot must have its webhook configured to this backend. If you see no reply from the bot, ask the admin to set the Telegram webhook (see backend README).</p>
+    <a href="${authUrl}" target="_blank" rel="noopener" class="btn">Open Telegram Bot</a>
+    <button type="button" onclick="window.close()">Close this window</button>
+  </div>
+</body></html>
+    `);
+  } catch (err) {
+    console.error('[Auth] Telegram start error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 router.get('/telegram/callback', (req, res) => handleAuthCallback(req, res, 'telegram', telegramCallback));
 router.get('/telegram/status', (req, res) => handleAuthStatus(req, res, 'telegram', telegramStatus));
+
+// One-time: set Telegram bot webhook so the bot receives /start (must be public HTTPS URL)
+// Call: GET /auth/telegram/set-webhook (e.g. from browser or curl). For local dev use ngrok and set BACKEND_URL to ngrok URL first.
+router.get('/telegram/set-webhook', async (req, res) => {
+  try {
+    const { getTelegramConfig } = await import('../providers/telegram.js');
+    const { TELEGRAM_BOT_TOKEN } = getTelegramConfig();
+    if (!TELEGRAM_BOT_TOKEN) {
+      return res.status(400).json({ error: 'TELEGRAM_BOT_TOKEN not set' });
+    }
+    const backendUrl = (process.env.BACKEND_URL || 'http://localhost:3001').replace(/\/$/, '');
+    const webhookUrl = `${backendUrl}/auth/telegram/webhook`;
+    if (webhookUrl.includes('localhost')) {
+      return res.status(400).json({
+        error: 'BACKEND_URL must be a public HTTPS URL for Telegram webhook. Use ngrok for local dev: ngrok http 3001, then set BACKEND_URL to the ngrok URL and call this again.',
+        webhookUrl,
+      });
+    }
+    const axios = (await import('axios')).default;
+    const r = await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook`, { url: webhookUrl });
+    res.json({ ok: true, result: r.data, webhookUrl });
+  } catch (err) {
+    console.error('[Telegram] setWebhook error:', err.response?.data || err.message);
+    res.status(500).json({ error: err.message, details: err.response?.data });
+  }
+});
 
 // Telegram Bot Webhook (for handling /start commands)
 router.post('/telegram/webhook', async (req, res) => {
@@ -330,31 +418,14 @@ router.post('/telegram/webhook', async (req, res) => {
       }
     };
 
-    // Save verification
-    const userId = session.userId || session.passportId;
-    if (userId) {
-      // Generate commitment for privacy
-      const platformId = 4; // Telegram = 4
-      const secretSalt = process.env.SECRET_SALT || 'zkpersona-secret-salt';
-      const commitmentInput = `${platformId}:${message.from.id.toString()}:${secretSalt}`;
-      const commitment = crypto.createHash('sha256').update(commitmentInput).digest('hex') + 'field';
-      
-      await saveVerification(userId, 'telegram', {
-        commitment: commitment, // PRIVACY: Use commitment, not providerAccountId
-        score: result.score,
-        maxScore: result.maxScore,
-        status: 'verified',
-        metadata: {
-          commitment: commitment,
-          score: result.score,
-          maxScore: result.maxScore,
-          criteria: result.criteria || [],
-          // DO NOT store: userId, username, profile
-        },
-        accessTokenHash: null
-      });
-      console.log(`[Telegram Webhook] ✅ Verification saved for userId: ${userId.substring(0, 10)}...`);
-    }
+    // GITCOIN PASSPORT MODEL: НЕ зберігаємо верифікацію в БД!
+    // Generate Aleo-compatible commitment
+    const platformId = 4; // Telegram = 4
+    const secretSalt = process.env.SECRET_SALT || 'zkpersona-secret-salt';
+    const commitment = generateAleoCommitment(platformId, message.from.id.toString(), secretSalt);
+    
+    // Додати commitment до результату
+    result.commitment = commitment;
 
     // Update session with result and status
     await updateSession(sessionId, {
@@ -415,10 +486,7 @@ router.get('/redirect', (req, res) => {
   res.redirect(url);
 });
 
-// TikTok OAuth
-router.get('/tiktok/start', (req, res) => handleAuthStart(req, res, 'tiktok', tiktokAuth));
-router.get('/tiktok/callback', (req, res) => handleAuthCallback(req, res, 'tiktok', tiktokCallback));
-router.get('/tiktok/status', (req, res) => handleAuthStatus(req, res, 'tiktok', tiktokStatus));
+// TikTok OAuth - REMOVED (no longer supported)
 
 // Solana Wallet
 router.get('/solana/start', (req, res) => handleAuthStart(req, res, 'solana', solanaAuth));
@@ -440,39 +508,55 @@ router.post('/solana/callback', async (req, res) => {
     const result = await solanaCallback(req.body, {
       id: sessionId,
       provider: session.provider,
+      walletId: session.userId,
       passportId: session.userId,
       stateData: session.stateData
     });
 
+    // GITCOIN PASSPORT MODEL: НЕ зберігаємо верифікацію в БД!
+    // Просто повертаємо результат через postMessage (якщо це popup) або JSON (якщо direct call)
+    
     if (result.verified) {
-      const userId = session.userId || session.passportId;
-      const commitment = result.commitment || null;
+      // Підготувати результат для frontend (БЕЗ особистих даних)
+      const frontendResult = {
+        provider: 'solana',
+        score: result.score || 0,
+        commitment: result.commitment || null,
+        criteria: result.criteria || [],
+        maxScore: result.maxScore || result.score || 0
+      };
       
-      await saveVerification(userId, 'solana', {
-        commitment: commitment,
-        score: result.score,
-        maxScore: result.maxScore || result.score,
-        status: 'verified',
-        metadata: {
-          commitment: commitment,
-          score: result.score,
-          maxScore: result.maxScore || result.score,
-          criteria: result.criteria || [],
-        },
-      });
-
-      await updateSession(sessionId, {
-        status: 'verified',
-        stateData: {
-          ...session.stateData,
-          result,
-          completedAt: new Date()
-        }
-      });
+      // Якщо це popup (через window.opener), використати postMessage
+      // Інакше повернути JSON (для direct API calls)
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      
+      // Для Solana, зазвичай це direct API call, але можна підтримати обидва варіанти
+      if (req.headers['x-requested-with'] === 'XMLHttpRequest' || req.headers.accept?.includes('application/json')) {
+        return res.json(frontendResult);
+      }
+      
+      // Fallback: postMessage HTML
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head><title>Verification Complete</title></head>
+          <body>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({
+                  type: 'oauth-complete',
+                  provider: 'solana',
+                  result: ${JSON.stringify(frontendResult)}
+                }, '${frontendUrl}');
+                window.close();
+              }
+            </script>
+          </body>
+        </html>
+      `);
     }
-
-    const frontendUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify/callback?provider=solana&session=${sessionId}`;
-    res.redirect(frontendUrl);
+    
+    res.status(400).json({ error: 'Verification failed' });
   } catch (error) {
     console.error('[Auth] ❌ solana callback error:', error.message, error.stack);
     res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify/callback?error=${encodeURIComponent(error.message)}`);

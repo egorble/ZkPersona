@@ -1,6 +1,6 @@
 /**
  * Calculate Solana wallet verification score based on criteria
- * @param {Object} walletData - Wallet data from Solscan
+ * @param {Object} walletData - Wallet data from Solscan/RPC
  * @returns {Object} { score: number, criteria: Array, maxScore: number }
  */
 export const calculateSolanaScore = (walletData) => {
@@ -8,7 +8,18 @@ export const calculateSolanaScore = (walletData) => {
   const criteria = [];
   const walletAgeDays = walletData.walletAgeDays || 0;
 
-  // 1. Points for SOL balance (minimum 0.1 SOL required)
+  // 0. Base points for successful verification (wallet connected + signature verified)
+  // Ensures user never gets 0 pts when they complete verification
+  const basePoints = 5;
+  score += basePoints;
+  criteria.push({
+    condition: 'Wallet connected & signature verified',
+    description: 'Phantom/Solflare wallet ownership verified',
+    points: basePoints,
+    achieved: true
+  });
+
+  // 1. Points for SOL balance (minimum 0.1 SOL for full points)
   const balanceSol = walletData.balanceSol || 0;
   
   // Minimum balance requirement: 0.1 SOL
@@ -157,11 +168,12 @@ export const calculateSolanaScore = (walletData) => {
     });
   }
 
-  const finalScore = Math.max(0, Math.min(score, 35));
+  const maxScore = 40; // 5 base + 10 balance + 10 tx + 10 age + 5 recent
+  const finalScore = Math.max(0, Math.min(score, maxScore));
 
   return {
     score: finalScore,
     criteria,
-    maxScore: 35
+    maxScore
   };
 };

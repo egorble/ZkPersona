@@ -1,6 +1,7 @@
 import axios from 'axios';
 import crypto from 'crypto';
 import { calculateSteamScore } from '../scoring/steam.js';
+import { generateAleoCommitment } from '../utils/aleoField.js';
 
 const getSteamConfig = () => {
   const STEAM_API_KEY = process.env.STEAM_API_KEY;
@@ -66,11 +67,10 @@ export const steamCallback = async (query, session) => {
   // Calculate score
   const scoreResult = calculateSteamScore(steamId, profileData);
 
-  // Generate commitment hash
-  const metadataHash = crypto
-    .createHash('sha256')
-    .update(`${steamId}:${Date.now()}`)
-    .digest('hex');
+  // Generate Aleo-compatible commitment
+  const platformId = 9; // Steam = 9 (per platformMapping.ts)
+  const secretSalt = process.env.SECRET_SALT || 'zkpersona-secret-salt';
+  const commitment = generateAleoCommitment(platformId, steamId, secretSalt);
 
   return {
     verified: true,
@@ -78,7 +78,8 @@ export const steamCallback = async (query, session) => {
     steamId,
     score: scoreResult.score,
     criteria: scoreResult.criteria,
-    metadataHash,
+    commitment,
+    metadataHash: commitment, // Alias for backward compatibility
     maxScore: scoreResult.maxScore
   };
 };

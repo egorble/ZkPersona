@@ -30,12 +30,12 @@ interface ProviderStatus {
 }
 
 interface VerificationDashboardProps {
-  passportId?: string;
+  walletId?: string;
   onVerify: (providerId: string) => void;
 }
 
 export const VerificationDashboard: React.FC<VerificationDashboardProps> = ({
-  passportId,
+  walletId,
   onVerify
 }) => {
   const { publicKey } = useWallet();
@@ -79,7 +79,6 @@ export const VerificationDashboard: React.FC<VerificationDashboardProps> = ({
     { id: 'solana', name: 'Solana Wallet', icon: <Wallet size={20} />, category: 'onchain' },
     { id: 'discord', name: 'Discord', icon: <MessageSquare size={20} />, category: 'social' },
     { id: 'telegram', name: 'Telegram', icon: <MessageCircle size={20} />, category: 'social' },
-    { id: 'tiktok', name: 'TikTok', icon: <Video size={20} />, category: 'social' },
   ];
 
   const getProviderStatus = (providerId: string): ProviderStatus => {

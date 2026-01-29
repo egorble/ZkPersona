@@ -14,7 +14,6 @@ import {
   getDaysRemaining,
   formatExpiryDate 
 } from '../lib/expiration';
-import { getUserVerifications } from '../utils/backendAPI';
 
 export interface VerificationState {
   [providerId: string]: {
@@ -33,7 +32,7 @@ export const useVerification = (walletAddress?: string) => {
   const [verifications, setVerifications] = useState<VerificationState>({});
   const [loading, setLoading] = useState(true);
 
-  // Load verifications from backend API instead of localStorage
+  // Load verifications from localStorage (frontend-only, no persistent backend storage)
   useEffect(() => {
     const loadVerifications = async () => {
       if (!walletAddress) {
@@ -45,68 +44,31 @@ export const useVerification = (walletAddress?: string) => {
 
       try {
         setLoading(true);
-        console.log('[useVerification] 📂 Loading verifications from backend API:', {
-          walletAddress
-        });
 
-        // Load from backend API
-        const backendVerifications = await getUserVerifications(walletAddress);
-        console.log('[useVerification] 📦 Backend returned verifications:', {
-          count: backendVerifications.length,
-          providers: backendVerifications.map((v: any) => v.provider),
-          userIds: backendVerifications.map((v: any) => v.userId?.substring(0, 10) + '...'),
-          requestedWalletAddress: walletAddress.substring(0, 10) + '...'
-        });
-        
-        const verificationsState: VerificationState = {};
+        const storageKey = `verifications_${walletAddress}`;
+        const saved = localStorage.getItem(storageKey);
 
-        // Convert backend verifications to state format
-        backendVerifications.forEach((v: any) => {
-          if (v.status === 'verified' && (!v.expiresAt || new Date(v.expiresAt) > new Date())) {
-            const verifiedAt = v.verifiedAt ? new Date(v.verifiedAt).getTime() : Date.now();
-            const status = getPlatformStatus(verifiedAt);
-            
-            // Extract criteria from backend response
-            // Backend returns criteria array with { condition, points, description, achieved }
-            const criteria = Array.isArray(v.criteria) ? v.criteria.map((c: any) => ({
-              condition: c.condition || '',
-              points: c.points || 0,
-              description: c.description || '',
-              achieved: c.achieved !== undefined ? c.achieved : false // Default to false if not specified
-            })) : [];
-            
-            const verificationData = {
-              verified: true,
-              score: v.score || 0,
-              criteria: criteria, // Use criteria from backend
-              verifiedAt,
-              commitment: generateCommitment(v.provider, walletAddress, verifiedAt),
-              status,
-              daysRemaining: getDaysRemaining(verifiedAt),
-              expiryDate: formatExpiryDate(verifiedAt)
-            };
-
-            // Map provider names
-            if (v.provider === 'evm' || v.provider === 'ethereum') {
-              verificationsState['wallet'] = verificationData;
-              verificationsState['ethereum'] = verificationData;
-              verificationsState['eth_wallet'] = verificationData;
-            } else {
-              verificationsState[v.provider] = verificationData;
-            }
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved) as VerificationState;
+            setVerifications(parsed);
+          } catch {
+            setVerifications({});
           }
-        });
-
-        setVerifications(verificationsState);
-        console.log('[useVerification] ✅ Loaded verifications from backend:', Object.keys(verificationsState));
-      } catch (error) {
-        console.error('[useVerification] ❌ Error loading verifications:', error);
+        } else {
+          setVerifications({});
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    loadVerifications();
+    // Add small delay to prevent rapid-fire calls in React Strict Mode
+    const timeoutId = setTimeout(() => {
+      loadVerifications();
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
   }, [walletAddress]);
 
   // Function to manually refresh verifications (called after successful verification)
@@ -117,66 +79,38 @@ export const useVerification = (walletAddress?: string) => {
 
     try {
       setLoading(true);
-      console.log('[useVerification] 🔄 Refreshing verifications from backend API...');
 
-      // Load from backend API
-      const backendVerifications = await getUserVerifications(walletAddress);
-      const verificationsState: VerificationState = {};
+      const storageKey = `verifications_${walletAddress}`;
+      const saved = localStorage.getItem(storageKey);
 
-      // Convert backend verifications to state format
-      backendVerifications.forEach((v: any) => {
-        if (v.status === 'verified' && (!v.expiresAt || new Date(v.expiresAt) > new Date())) {
-          const verifiedAt = v.verifiedAt ? new Date(v.verifiedAt).getTime() : Date.now();
-          const status = getPlatformStatus(verifiedAt);
-          
-          // Extract criteria from backend response
-          const criteria = Array.isArray(v.criteria) ? v.criteria.map((c: any) => ({
-            condition: c.condition || '',
-            points: c.points || 0,
-            description: c.description || '',
-            achieved: c.achieved !== undefined ? c.achieved : false
-          })) : [];
-          
-          const verificationData = {
-            verified: true,
-            score: v.score || 0,
-            criteria: criteria, // Use criteria from backend
-            verifiedAt,
-            commitment: generateCommitment(v.provider, walletAddress, verifiedAt),
-            status,
-            daysRemaining: getDaysRemaining(verifiedAt),
-            expiryDate: formatExpiryDate(verifiedAt)
-          };
-
-          // Map provider names
-          if (v.provider === 'evm' || v.provider === 'ethereum') {
-            verificationsState['wallet'] = verificationData;
-            verificationsState['ethereum'] = verificationData;
-            verificationsState['eth_wallet'] = verificationData;
-          } else {
-            verificationsState[v.provider] = verificationData;
-          }
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved) as VerificationState;
+          setVerifications(parsed);
+        } catch {
+          setVerifications({});
         }
-      });
-
-      setVerifications(verificationsState);
-      console.log('[useVerification] ✅ Refreshed verifications from backend:', Object.keys(verificationsState));
-    } catch (error) {
-      console.error('[useVerification] ❌ Error refreshing verifications:', error);
+      } else {
+        setVerifications({});
+      }
     } finally {
       setLoading(false);
     }
   }, [walletAddress]);
 
-  // Listen for verification-updated event to refresh verifications
+  // Listen for verification-updated event to refresh verifications (debounced to avoid storm)
   useEffect(() => {
+    let t: ReturnType<typeof setTimeout>;
     const handleVerificationUpdate = () => {
-      console.log('[useVerification] 🔔 Verification update event received, refreshing...');
-      refreshVerifications();
+      clearTimeout(t);
+      t = setTimeout(() => refreshVerifications(), 500);
     };
 
     window.addEventListener('verification-updated', handleVerificationUpdate);
-    return () => window.removeEventListener('verification-updated', handleVerificationUpdate);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('verification-updated', handleVerificationUpdate);
+    };
   }, [refreshVerifications]);
 
   const [verifying, setVerifying] = useState<string | null>(null);
@@ -184,31 +118,26 @@ export const useVerification = (walletAddress?: string) => {
   // Save verifications to React state only (backend handles persistence)
   const saveVerifications = useCallback((newVerifications: VerificationState) => {
     setVerifications(newVerifications);
-    console.log('[useVerification] 💾 Verifications updated in state');
   }, []);
 
   // Save verification result from backend (without API calls)
+  // When backend returns commitment (Telegram, Solana, Discord callback), use it for claim_social_stamp
   const saveVerificationResult = useCallback((
     providerId: string,
-    result: { score: number; criteria: Array<{ condition: string; points: number; description: string }>; metadataHash?: string }
+    result: { score: number; criteria: Array<{ condition: string; points: number; description: string }>; metadataHash?: string; commitment?: string }
   ) => {
-    console.log(`[useVerification] 💾 Saving verification result for ${providerId}:`, {
-      score: result.score,
-      criteriaCount: result.criteria.length
-    });
-
     const timestamp = Date.now();
-    const userId = result.metadataHash || `${providerId}_${timestamp}`;
-    const commitment = walletAddress 
-      ? generateCommitment(userId, walletAddress, timestamp)
-      : '';
+    const userId = result.metadataHash || result.commitment || `${providerId}_${timestamp}`;
+    const commitment = (result.commitment && String(result.commitment).trim()) 
+      ? String(result.commitment).replace(/\s/g, '')
+      : (walletAddress ? generateCommitment(userId, walletAddress, timestamp) : '');
 
     const updated = {
       ...verifications,
       [providerId]: {
         verified: true,
         score: result.score,
-        criteria: result.criteria.map(c => ({
+        criteria: (result.criteria || []).map(c => ({
           ...c,
           achieved: true
         })),
@@ -221,9 +150,17 @@ export const useVerification = (walletAddress?: string) => {
     };
 
     saveVerifications(updated);
-    console.log(`[useVerification] ✅ Verification saved for ${providerId}, status: connected`);
+
+    // Persist to localStorage (per-wallet key) so status survives reload
+    if (walletAddress) {
+      try {
+        const storageKey = `verifications_${walletAddress}`;
+        localStorage.setItem(storageKey, JSON.stringify(updated));
+      } catch {
+        // Ignore storage errors
+      }
+    }
     
-    // Trigger storage event so other components can listen
     window.dispatchEvent(new Event('verification-updated'));
   }, [verifications, saveVerifications, walletAddress]);
 
@@ -242,8 +179,7 @@ export const useVerification = (walletAddress?: string) => {
           result = await verifyDiscord(credentials.accessToken);
           break;
         case 'telegram':
-        case 'tiktok':
-          // Telegram and TikTok are handled via backend OAuth, not frontend
+          // Telegram is handled via backend OAuth, not frontend
           throw new Error(`${providerId} verification must be done through backend OAuth flow`);
         case 'ethereum':
         case 'eth_wallet':
@@ -285,10 +221,19 @@ export const useVerification = (walletAddress?: string) => {
       };
 
       saveVerifications(updated);
+      
+      // Persist to localStorage
+      if (walletAddress) {
+        try {
+          const storageKey = `verifications_${walletAddress}`;
+          localStorage.setItem(storageKey, JSON.stringify(updated));
+        } catch {
+          // Ignore storage errors
+        }
+      }
 
       return result;
     } catch (error) {
-      console.error(`[Verification] Failed to verify ${providerId}:`, error);
       throw error;
     } finally {
       setVerifying(null);
@@ -305,49 +250,24 @@ export const useVerification = (walletAddress?: string) => {
 
   const clearVerification = useCallback(async (providerId: string) => {
     if (!walletAddress) {
-      console.warn('[useVerification] ⚠️ Cannot clear verification: wallet not connected');
       return;
     }
 
-    try {
-      console.log(`[useVerification] 🗑️ Clearing verification: ${providerId} for wallet ${walletAddress.substring(0, 10)}...`);
-      
-      // Import deleteUserVerification function
-      const { deleteUserVerification } = await import('../utils/backendAPI');
-      
-      // Delete from backend first
-      const deleted = await deleteUserVerification(walletAddress, providerId);
-      
-      if (deleted) {
-        console.log(`[useVerification] ✅ Verification deleted from backend: ${providerId}`);
-      } else {
-        console.warn(`[useVerification] ⚠️ Verification not found in backend: ${providerId}`);
+    // Frontend-only: clear from state and localStorage, no backend DELETE
+    const updated = { ...verifications };
+    delete updated[providerId];
+    setVerifications(updated);
+
+    const storageKey = `verifications_${walletAddress}`;
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        delete parsed[providerId];
+        localStorage.setItem(storageKey, JSON.stringify(parsed));
+      } catch {
+        // Ignore localStorage errors
       }
-      
-      // Remove from local state
-      const updated = { ...verifications };
-      delete updated[providerId];
-      setVerifications(updated);
-      
-      // Also clear from localStorage (if using it)
-      const saved = localStorage.getItem('verifications');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          delete parsed[providerId];
-          localStorage.setItem('verifications', JSON.stringify(parsed));
-        } catch (e) {
-          // Ignore localStorage errors
-        }
-      }
-      
-      console.log(`[useVerification] ✅ Verification cleared from state: ${providerId}`);
-    } catch (error) {
-      console.error(`[useVerification] ❌ Error clearing verification:`, error);
-      // Still remove from local state even if backend deletion fails
-      const updated = { ...verifications };
-      delete updated[providerId];
-      setVerifications(updated);
     }
   }, [verifications, walletAddress]);
 

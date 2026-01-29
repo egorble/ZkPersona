@@ -1,6 +1,6 @@
 // ZK Passport Identity System
 
-program zkpersona_passport_v2.aleo {
+program zkpersona_passport_v5.aleo {
     @noupgrade
     async constructor() {}
 
@@ -38,15 +38,6 @@ program zkpersona_passport_v2.aleo {
         claimed_at: u64,
         is_active: bool
     }
-    struct PointClaim {
-        user: address,
-        platform_id: u8,
-        commitment: field,
-        points: u64,
-        claimed_at: u64,
-        is_active: bool
-    }
-
     struct Admin {
         admin_address: address,
         permissions: u8,
@@ -66,7 +57,7 @@ program zkpersona_passport_v2.aleo {
     mapping stamp_count: u32 => u32;
     mapping nullifiers: field => Nullifier;
     mapping social_commitments: field => SocialBinding;
-    mapping point_claims: field => PointClaim;  // commitment => PointClaim (prevents double claiming)
+    mapping used_commitments: field => bool;  // commitment => used (prevents double claim; no user/platform/points stored)
     mapping user_platform_claims: field => bool;  // hash(user_address, platform_id) => bool (prevents same user claiming same platform twice)
 
     // Helper functions
@@ -153,6 +144,27 @@ program zkpersona_passport_v2.aleo {
         Mapping::set(admins, owner, admin);
         Mapping::set(is_admin, owner, true);
         Mapping::set(is_initialized, 0u32, true);
+
+        // Default stamps (no admin panel needed): platform_id 1=Discord, 2=Twitter, 3=GitHub, 4=Telegram, 6=EVM, 7=Solana, 8=Google, 9=Steam
+        let s1: StampMetadata = StampMetadata { stamp_id: 1u32, platform_id: 1u8, points: 78u64, name_hash: 0field, is_active: true, created_at: now };
+        let s2: StampMetadata = StampMetadata { stamp_id: 2u32, platform_id: 2u8, points: 80u64, name_hash: 0field, is_active: true, created_at: now };
+        let s3: StampMetadata = StampMetadata { stamp_id: 3u32, platform_id: 3u8, points: 80u64, name_hash: 0field, is_active: true, created_at: now };
+        let s4: StampMetadata = StampMetadata { stamp_id: 4u32, platform_id: 4u8, points: 80u64, name_hash: 0field, is_active: true, created_at: now };
+        let s5: StampMetadata = StampMetadata { stamp_id: 5u32, platform_id: 5u8, points: 80u64, name_hash: 0field, is_active: true, created_at: now };
+        let s6: StampMetadata = StampMetadata { stamp_id: 6u32, platform_id: 6u8, points: 80u64, name_hash: 0field, is_active: true, created_at: now };
+        let s7: StampMetadata = StampMetadata { stamp_id: 7u32, platform_id: 7u8, points: 80u64, name_hash: 0field, is_active: true, created_at: now };
+        let s8: StampMetadata = StampMetadata { stamp_id: 8u32, platform_id: 8u8, points: 80u64, name_hash: 0field, is_active: true, created_at: now };
+        let s9: StampMetadata = StampMetadata { stamp_id: 9u32, platform_id: 9u8, points: 80u64, name_hash: 0field, is_active: true, created_at: now };
+        Mapping::set(stamps, 1u32, s1);
+        Mapping::set(stamps, 2u32, s2);
+        Mapping::set(stamps, 3u32, s3);
+        Mapping::set(stamps, 4u32, s4);
+        Mapping::set(stamps, 5u32, s5);
+        Mapping::set(stamps, 6u32, s6);
+        Mapping::set(stamps, 7u32, s7);
+        Mapping::set(stamps, 8u32, s8);
+        Mapping::set(stamps, 9u32, s9);
+        Mapping::set(stamp_count, 0u32, 9u32);
     }
 
     async transition add_admin(public new_admin: address, public permissions: u8) -> Future {
@@ -426,11 +438,10 @@ program zkpersona_passport_v2.aleo {
         Mapping::set(social_commitments, commitment, binding);
     }
 
-    // User functions
-    async transition create_passport(public nonce: field) -> (Passport, Future) {
+    // User functions (author + inputs private; nothing stored in public state)
+    async transition claim_points(private nonce: field) -> (Passport, Future) {
         let now: u64 = 0u64;
 
-        // Initialize with empty commitments and zero counts
         let passport: Passport = Passport {
             owner: self.caller,
             total_stamps: 0u32,
@@ -443,10 +454,10 @@ program zkpersona_passport_v2.aleo {
             nonce: nonce,
         };
 
-        return (passport, finalize_create_passport());
+        return (passport, finalize_claim_points());
     }
 
-    async function finalize_create_passport() {
+    async function finalize_claim_points() {
     }
     async transition aggregate_stamps(
         private passport: Passport,
@@ -563,65 +574,20 @@ program zkpersona_passport_v2.aleo {
         return hash;
     }
 
-    // Main function: Claim points after successful social network connection
+    // Claim points after successful social connection. Author, platform, points private; only opaque hashes stored.
     async transition claim_point(
         private passport: Passport,
-        public platform_id: u8,
+        private platform_id: u8,
         private social_commitment: field,
-        public points: u64
+        private points: u64
     ) -> (Passport, Future) {
-        // 1. Verify passport ownership
         assert(passport.owner == self.caller);
-
-        // 2. Verify that social commitment exists and is active (network is connected)
-        let default_binding: SocialBinding = SocialBinding {
-            commitment: 0field,
-            platform_id: 0u8,
-            claimed_at: 0u64,
-            is_active: false,
-        };
-        
-        let binding: SocialBinding = Mapping::get_or_use(
-            social_commitments,
-            social_commitment,
-            default_binding
-        );
-        
-        // Social network must be connected (is_active == true)
-        assert(binding.is_active);
-        assert(binding.platform_id == platform_id);
-
-        // 3. Check if this commitment was already used for claiming points
-        let default_claim: PointClaim = PointClaim {
-            user: (0field as address),
-            platform_id: 0u8,
-            commitment: 0field,
-            points: 0u64,
-            claimed_at: 0u64,
-            is_active: false,
-        };
-        
-        let existing_claim: PointClaim = Mapping::get_or_use(
-            point_claims,
-            social_commitment,
-            default_claim
-        );
-        
-        // Prevent double claiming with the same commitment
-        assert(!existing_claim.is_active);
-
-        // 4. Check if user already claimed points for this platform (prevent same user claiming same platform twice)
         let user_platform_hash: field = hash_user_platform(self.caller, platform_id);
-        let already_claimed: bool = Mapping::get_or_use(user_platform_claims, user_platform_hash, false);
-        
-        // Prevent same user from claiming points for the same platform again
-        assert(!already_claimed);
 
-        // 5. Update passport with new points
         let now: u64 = 0u64;
         let new_total_points: u64 = passport.total_points + points;
         let new_humanity_score: u64 = calculate_humanity_score(passport.total_stamps, new_total_points);
-        
+
         let updated_passport: Passport = Passport {
             owner: passport.owner,
             total_stamps: passport.total_stamps,
@@ -636,31 +602,31 @@ program zkpersona_passport_v2.aleo {
 
         return (
             updated_passport,
-            finalize_claim_point(self.caller, platform_id, social_commitment, points, user_platform_hash)
+            finalize_claim_point(social_commitment, user_platform_hash)
         );
     }
 
-    async function finalize_claim_point(
-        user: address,
-        platform_id: u8,
-        commitment: field,
-        points: u64,
-        user_platform_hash: field
-    ) {
-        // Save point claim to prevent double claiming
-        let now: u64 = 0u64;
-        let claim: PointClaim = PointClaim {
-            user: user,
-            platform_id: platform_id,
-            commitment: commitment,
-            points: points,
-            claimed_at: now,
-            is_active: true,
+    async function finalize_claim_point(commitment: field, user_platform_hash: field) {
+        let default_binding: SocialBinding = SocialBinding {
+            commitment: 0field,
+            platform_id: 0u8,
+            claimed_at: 0u64,
+            is_active: false,
         };
-        
-        Mapping::set(point_claims, commitment, claim);
-        
-        // Mark user-platform combination as claimed
+        let binding: SocialBinding = Mapping::get_or_use(
+            social_commitments,
+            commitment,
+            default_binding
+        );
+        assert(binding.is_active);
+
+        let already_used: bool = Mapping::get_or_use(used_commitments, commitment, false);
+        assert(!already_used);
+
+        let already_claimed: bool = Mapping::get_or_use(user_platform_claims, user_platform_hash, false);
+        assert(!already_claimed);
+
+        Mapping::set(used_commitments, commitment, true);
         Mapping::set(user_platform_claims, user_platform_hash, true);
     }
 

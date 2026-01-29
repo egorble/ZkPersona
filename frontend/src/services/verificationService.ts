@@ -739,24 +739,12 @@ export const VERIFICATION_CONFIGS: Record<string, VerificationConfig> = {
       throw new Error('Telegram verification must be done through backend OAuth flow');
     }
   },
-  tiktok: {
-    provider: 'TikTok',
-    maxScore: 10,
-    criteria: [
-      { condition: 'Account exists', points: 3.0, description: 'Active TikTok account' },
-      { condition: 'Username set', points: 2.0, description: 'TikTok username is configured' },
-      { condition: 'Profile avatar', points: 2.0, description: 'Profile avatar is set' },
-      { condition: 'Display name set', points: 3.0, description: 'Display name is configured' }
-    ],
-    checkFunction: async () => {
-      // TikTok verification is handled via backend OAuth
-      throw new Error('TikTok verification must be done through backend OAuth flow');
-    }
-  },
+  // TikTok removed - no longer supported
   solana: {
     provider: 'Solana',
-    maxScore: 35,
+    maxScore: 40,
     criteria: [
+      { condition: 'Wallet connected & signature verified', points: 5, description: 'Phantom/Solflare ownership verified' },
       { condition: 'Balance ≥ 1.0 SOL', points: 10, description: 'Wallet has sufficient balance' },
       { condition: 'Balance ≥ 0.1 SOL', points: 5, description: 'Wallet has minimum balance' },
       { condition: '≥ 100 transactions', points: 10, description: 'Active wallet with transaction history' },

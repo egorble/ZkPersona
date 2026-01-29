@@ -2,6 +2,7 @@
 
 export interface Stamp {
     stamp_id: number;
+    platform_id?: number;  // from contract; used to match provider for claim_social_stamp
     name: string;
     description: string;
     category: string;

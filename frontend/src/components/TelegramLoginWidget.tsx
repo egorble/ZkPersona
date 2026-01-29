@@ -29,7 +29,6 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
 
     // Create global callback function
     (window as any).onTelegramAuth = (user: any) => {
-      console.log('[Telegram Widget] Auth data received:', user);
       onAuth(user);
     };
 

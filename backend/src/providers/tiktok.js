@@ -3,6 +3,7 @@
 
 import axios from 'axios';
 import crypto from 'crypto';
+import { generateAleoCommitment } from '../utils/aleoField.js';
 
 const getTikTokConfig = () => {
   const TIKTOK_CLIENT_ID = (process.env.TIKTOK_CLIENT_ID || '').trim();
@@ -156,11 +157,10 @@ export class TikTokProvider {
       const { calculateTikTokScore } = await import('../scoring/tiktok.js');
       const scoreResult = calculateTikTokScore(userInfo);
 
-      // Generate commitment for privacy
+      // Generate Aleo-compatible commitment for privacy
       const platformId = 5; // TikTok = 5 (per spec)
       const secretSalt = process.env.SECRET_SALT || 'zkpersona-secret-salt';
-      const commitmentInput = `${platformId}:${userId}:${secretSalt}`;
-      const commitment = crypto.createHash('sha256').update(commitmentInput).digest('hex') + 'field';
+      const commitment = generateAleoCommitment(platformId, userId, secretSalt);
       
       return {
         valid: true,

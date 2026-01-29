@@ -17,7 +17,6 @@ export const OAuthCallback: React.FC = () => {
   const handleBackendCallback = useCallback(async (provider: string, sessionId: string) => {
     try {
       setStatus('processing');
-      console.log(`[OAuth] 🔄 Backend-centric flow: polling status for ${provider}, session: ${sessionId}`);
 
       // Poll backend for verification status
       const pollStatus = async (): Promise<VerificationSession | null> => {
@@ -27,15 +26,8 @@ export const OAuthCallback: React.FC = () => {
             return null;
           }
 
-          console.log(`[OAuth] 📊 Status poll result:`, {
-            provider: result.provider,
-            status: result.status,
-            hasResult: !!result.result
-          });
-
           return result;
         } catch (err) {
-          console.error(`[OAuth] ❌ Poll error:`, err);
           return null;
         }
       };
@@ -54,12 +46,6 @@ export const OAuthCallback: React.FC = () => {
               clearInterval(interval);
               setPollingInterval(null);
 
-              console.log(`[OAuth] ✅ Verification complete:`, {
-                provider: data.result.provider,
-                score: data.result.score,
-                verified: data.result.verified
-              });
-
               // Save verification result
               // Backend returns criteria as array of { condition, points, description? }
               const criteria = Array.isArray(data.result.criteria) 
@@ -76,6 +62,7 @@ export const OAuthCallback: React.FC = () => {
                 metadataHash: data.result.metadataHash
               });
 
+              console.log(`[OAuthCallback] Successfully verified ${data.result.provider}. Score: ${data.result.score || 0}`);
               setStatus('success');
               setTimeout(() => navigate('/'), 2000);
             } else if (data.status === 'failed') {
@@ -83,6 +70,14 @@ export const OAuthCallback: React.FC = () => {
               clearInterval(interval);
               setPollingInterval(null);
               
+              const errorDetails = {
+                provider,
+                sessionId,
+                reason: 'Backend returned failed status',
+                status: data.status,
+                sessionData: data
+              };
+              console.error(`[OAuthCallback] Verification failed. Reason: Backend returned failed status`, errorDetails);
               setError('Verification failed. Please try again.');
               setStatus('error');
               setTimeout(() => navigate('/'), 3000);
@@ -97,6 +92,14 @@ export const OAuthCallback: React.FC = () => {
           if (interval) {
             clearInterval(interval);
             setPollingInterval(null);
+            const errorDetails = {
+              provider,
+              sessionId,
+              reason: 'Polling timeout after 60 seconds',
+              timeout: '60 seconds',
+              pollingInterval: '1 second'
+            };
+            console.error(`[OAuthCallback] Verification timeout. Reason: Polling exceeded 60 second timeout`, errorDetails);
             setError('Verification timeout. Please try again.');
             setStatus('error');
             setTimeout(() => navigate('/'), 3000);
@@ -104,8 +107,6 @@ export const OAuthCallback: React.FC = () => {
         }, 60000);
       } else if (sessionData.status === 'verified' && sessionData.result) {
         // Already verified
-        console.log(`[OAuth] ✅ Already verified:`, sessionData.result);
-
         // Backend returns criteria as array of { condition, points, description? }
         const criteria = Array.isArray(sessionData.result.criteria) 
           ? sessionData.result.criteria.map(c => ({
@@ -121,15 +122,31 @@ export const OAuthCallback: React.FC = () => {
           metadataHash: sessionData.result.metadataHash
         });
 
+        console.log(`[OAuthCallback] Already verified ${sessionData.result.provider}. Score: ${sessionData.result.score || 0}`);
         setStatus('success');
         setTimeout(() => navigate('/'), 2000);
       } else if (sessionData.status === 'failed') {
+        const errorDetails = {
+          provider,
+          sessionId,
+          reason: 'Backend returned failed status on initial poll',
+          status: sessionData.status,
+          sessionData
+        };
+        console.error(`[OAuthCallback] Verification failed. Reason: Backend returned failed status`, errorDetails);
         setError('Verification failed. Please try again.');
         setStatus('error');
         setTimeout(() => navigate('/'), 3000);
       }
     } catch (err) {
-      console.error('[OAuth] ❌ Backend callback error:', err);
+      const errorDetails = {
+        provider,
+        sessionId,
+        reason: err instanceof Error ? err.message : 'Unknown error',
+        type: err instanceof Error ? err.constructor.name : typeof err,
+        stack: err instanceof Error ? err.stack : undefined
+      };
+      console.error(`[OAuthCallback] Error during verification. Reason: ${err instanceof Error ? err.message : 'Unknown error'}`, errorDetails);
       setError(err instanceof Error ? err.message : 'Verification failed');
       setStatus('error');
       setTimeout(() => navigate('/'), 3000);
@@ -155,24 +172,45 @@ export const OAuthCallback: React.FC = () => {
       const identity = params.get('openid.identity');
       
       if (!claimedId || !identity) {
+        const errorDetails = {
+          reason: 'Missing required Steam OpenID parameters',
+          hasClaimedId: !!claimedId,
+          hasIdentity: !!identity,
+          params: Object.fromEntries(params.entries())
+        };
+        console.error('[OAuthCallback] Steam verification failed. Reason: Invalid Steam OpenID response', errorDetails);
         throw new Error('Invalid Steam OpenID response');
       }
       
       // Extract Steam ID from claimed_id (format: https://steamcommunity.com/openid/id/7656119...)
       const steamIdMatch = claimedId.match(/\/id\/(\d+)$/);
       if (!steamIdMatch) {
+        const errorDetails = {
+          reason: 'Could not extract Steam ID from claimed_id',
+          claimedId,
+          identity
+        };
+        console.error('[OAuthCallback] Steam verification failed. Reason: Could not extract Steam ID', errorDetails);
         throw new Error('Could not extract Steam ID');
       }
       
       const steamId = steamIdMatch[1];
-      console.log(`[Steam] ✅ Steam ID extracted: ${steamId}`);
       
       // Verify Steam account
+      console.log(`[OAuthCallback] Verifying Steam account: ${steamId}`);
       await verifyProvider('steam', { address: steamId });
       
+      console.log('[OAuthCallback] Successfully verified Steam account');
       setStatus('success');
       setTimeout(() => navigate('/'), 2000);
     } catch (err) {
+      const errorDetails = {
+        reason: err instanceof Error ? err.message : 'Unknown error',
+        type: err instanceof Error ? err.constructor.name : typeof err,
+        stack: err instanceof Error ? err.stack : undefined,
+        params: Object.fromEntries(params.entries())
+      };
+      console.error(`[OAuthCallback] Steam verification failed. Reason: ${err instanceof Error ? err.message : 'Unknown error'}`, errorDetails);
       setError(err instanceof Error ? err.message : 'Steam verification failed');
       setStatus('error');
       setTimeout(() => navigate('/'), 3000);
@@ -188,7 +226,6 @@ export const OAuthCallback: React.FC = () => {
       
       // If popup window, send data via BroadcastChannel to main window
       if (isPopup) {
-        console.log('[OAuth] 📤 Popup window - sending data via BroadcastChannel');
         sendOAuthRedirect(providerId, code, state);
         setStatus('success');
         return; // Don't redirect in popup
@@ -198,16 +235,20 @@ export const OAuthCallback: React.FC = () => {
       // Verify state to prevent CSRF attacks
       const storedState = localStorage.getItem(`oauth_state_${providerId}`);
       if (!state || !storedState || state !== storedState) {
+        const errorDetails = {
+          providerId,
+          reason: 'OAuth state parameter mismatch or missing',
+          hasState: !!state,
+          hasStoredState: !!storedState,
+          stateMatch: state === storedState
+        };
+        console.error(`[OAuthCallback] OAuth callback failed. Reason: Invalid OAuth state parameter`, errorDetails);
         throw new Error('Invalid OAuth state parameter');
       }
       
-      // Extract passport ID from state (format: state_passportId)
-      const passportId = state.includes('_') ? state.split('_').slice(1).join('_') : 'default';
-      localStorage.setItem('passport_id', passportId);
+      const walletId = state.includes('_') ? state.split('_').slice(1).join('_') : 'default';
+      localStorage.setItem('wallet_id', walletId);
       localStorage.removeItem(`oauth_state_${providerId}`);
-      
-      console.log(`[OAuth] ✅ State validated for ${providerId}`);
-      console.log(`[OAuth] Passport ID: ${passportId}`);
 
       // Get redirect URI
       const redirectUri = import.meta.env.VITE_OAUTH_REDIRECT_URI || 
@@ -223,6 +264,14 @@ export const OAuthCallback: React.FC = () => {
       } catch (tokenError) {
         // If client-side token exchange fails, show helpful error
         const errorMsg = tokenError instanceof Error ? tokenError.message : String(tokenError);
+        const errorDetails = {
+          providerId,
+          reason: errorMsg,
+          type: tokenError instanceof Error ? tokenError.constructor.name : typeof tokenError,
+          stack: tokenError instanceof Error ? tokenError.stack : undefined,
+          redirectUri
+        };
+        console.error(`[OAuthCallback] Token exchange failed. Reason: ${errorMsg}`, errorDetails);
         if (errorMsg.includes('client_secret') || errorMsg.includes('Client Secret')) {
           setError('OAuth token exchange requires backend API. Client Secret cannot be used in frontend. Please set up a backend endpoint for /api/oauth/token');
         } else {
@@ -234,11 +283,22 @@ export const OAuthCallback: React.FC = () => {
       }
 
       // Verify provider with access token
+      console.log(`[OAuthCallback] Verifying ${providerId} with access token`);
       await verifyProvider(providerId, { accessToken });
       
+      console.log(`[OAuthCallback] Successfully verified ${providerId}`);
       setStatus('success');
       setTimeout(() => navigate('/'), 2000);
     } catch (err) {
+      const errorDetails = {
+        providerId,
+        reason: err instanceof Error ? err.message : 'Unknown error',
+        type: err instanceof Error ? err.constructor.name : typeof err,
+        stack: err instanceof Error ? err.stack : undefined,
+        hasCode: !!code,
+        hasState: !!state
+      };
+      console.error(`[OAuthCallback] OAuth callback failed. Reason: ${err instanceof Error ? err.message : 'Unknown error'}`, errorDetails);
       setError(err instanceof Error ? err.message : 'OAuth callback failed');
       setStatus('error');
       setTimeout(() => navigate('/'), 3000);
@@ -270,7 +330,6 @@ export const OAuthCallback: React.FC = () => {
     // Backend-centric flow: provider + session (backend redirect)
     // Format: /verify/callback?provider=twitter&session=SESSION_ID
     if (provider && session) {
-      console.log(`[OAuth] 📥 Backend callback received:`, { provider, session });
       handleBackendCallback(provider, session);
       return;
     }
@@ -278,7 +337,6 @@ export const OAuthCallback: React.FC = () => {
     // Legacy direct OAuth callback: code + provider (fallback)
     // Format: /oauth/callback?provider=twitter&code=...&state=...
     if (code && provider) {
-      console.log(`[OAuth] 📥 Legacy OAuth callback received:`, { provider, hasCode: !!code, hasState: !!state });
       handleOAuthCallback(provider, code, state || '');
       return;
     }

@@ -276,26 +276,7 @@ export const getVerificationInstructions = (providerId: string): VerificationIns
         ]
       };
 
-    case 'tiktok':
-      return {
-        provider: 'TikTok',
-        providerId: 'tiktok',
-        steps: [
-          {
-            title: '1. Connect TikTok Account',
-            description: 'Click "Start Verification" to open TikTok OAuth. You will be redirected to TikTok to authorize the connection.',
-            link: 'https://developers.tiktok.com/doc/tiktok-api-v2-get-user-info/'
-          },
-          {
-            title: '2. Account Verification',
-            description: 'We will verify your TikTok account: username, avatar, and display name.',
-          },
-          {
-            title: '3. Get Score',
-            description: 'Receive up to 10 points based on your TikTok account verification.',
-          }
-        ]
-      };
+    // TikTok removed - no longer supported
 
     default:
       return {
@@ -333,11 +314,10 @@ export const initiateOAuth = async (providerId: string, redirectUri: string): Pr
   // Generate state
   const state = Math.random().toString(36).substring(7);
   
-  // Get passport ID for state
-  const passportId = localStorage.getItem('passport_id') || 
+  const walletId = localStorage.getItem('wallet_id') || 
                     localStorage.getItem('aleo_public_key')?.slice(0, 8) || 
                     'default';
-  const stateWithPassport = `${state}_${passportId}`;
+  const stateWithWallet = `${state}_${walletId}`;
   
   // Generate PKCE for providers that support it (Twitter, Google)
   let codeChallenge: string | undefined;
@@ -356,15 +336,14 @@ export const initiateOAuth = async (providerId: string, redirectUri: string): Pr
     }
   }
   
-  // Store state with passport ID
-  localStorage.setItem(`oauth_state_${providerId}`, stateWithPassport);
+  localStorage.setItem(`oauth_state_${providerId}`, stateWithWallet);
 
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
     scope: provider.scopes?.join(' ') || '',
-    state: stateWithPassport
+    state: stateWithWallet
   });
 
   // Add PKCE parameters if available

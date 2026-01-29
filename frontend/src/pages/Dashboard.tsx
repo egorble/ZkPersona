@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { useWallet } from "@demox-labs/aleo-wallet-adapter-react";
-import { usePassport } from "../hooks/usePassport";
 import { useStamps } from "../hooks/useStamps";
 import { StampCard } from "../components/StampCard";
-import { SuccessModal } from "../components/SuccessModal";
 import { WalletRequiredModal } from "../components/WalletRequiredModal";
 import PageRoot from "../components/PageRoot";
 import { Header } from "../components/Header";
@@ -16,34 +14,8 @@ import { PROGRAM_ID } from "../deployed_program";
 
 export const Dashboard = () => {
     const { publicKey } = useWallet();
-    const { hasPassport, createPassport, loading } = usePassport();
-    
-    // PRIVACY: useStamps only returns PUBLIC metadata - no user stamp ownership
     const { stamps, loading: stampsLoading } = useStamps();
-    
-    const [showSuccess, setShowSuccess] = useState(false);
-    const [successTxId, setSuccessTxId] = useState<string | undefined>();
     const [showWalletModal, setShowWalletModal] = useState(false);
-
-    // Stamps are now fetched via useStamps hook from blockchain API
-    // No need for localStorage loading here
-
-    const handleCreatePassport = async () => {
-        if (!publicKey) {
-            setShowWalletModal(true);
-            return;
-        }
-
-        try {
-            const txId = await createPassport();
-            if (txId) {
-                setSuccessTxId(txId);
-                setShowSuccess(true);
-            }
-        } catch (error) {
-            alert("Failed to create passport: " + (error instanceof Error ? error.message : String(error)));
-        }
-    };
 
     const handleConnectWallet = () => {
         setShowWalletModal(true);
@@ -64,7 +36,7 @@ export const Dashboard = () => {
                                     A decentralized identity verification system with full encryption through Aleo zero-knowledge proofs.
                                 </p>
                                 <p className="text-color-2 mb-6">
-                                    Connect your Leo Wallet to create your passport and start earning stamps that prove your humanity and identity.
+                                    Connect your wallet to verify and earn points. Claim them on-chain—no extra setup.
                                 </p>
                                 <button
                                     onClick={handleConnectWallet}
@@ -86,8 +58,6 @@ export const Dashboard = () => {
             </>
         );
     }
-
-    // No passport creation required - show dashboard immediately
 
     // PRIVACY: Score is private - we don't display it
     // PRIVACY: User stamp ownership is private - we don't display which stamps user has
@@ -147,16 +117,6 @@ export const Dashboard = () => {
                 </BodyWrapper>
                 <WelcomeFooter displayPrivacyPolicy={false} />
             </HeaderContentFooterGrid>
-
-            <SuccessModal
-                isOpen={showSuccess}
-                onClose={() => {
-                    setShowSuccess(false);
-                    setSuccessTxId(undefined);
-                }}
-                message="Passport created successfully!"
-                txId={successTxId}
-            />
         </PageRoot>
     );
 };

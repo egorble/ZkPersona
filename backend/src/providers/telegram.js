@@ -3,6 +3,7 @@
 
 import axios from 'axios';
 import crypto from 'crypto';
+import { generateAleoCommitment } from '../utils/aleoField.js';
 
 export const getTelegramConfig = () => {
   const TELEGRAM_BOT_TOKEN = (process.env.TELEGRAM_BOT_TOKEN || '').trim();
@@ -110,11 +111,10 @@ export const verifyTelegramUser = async (telegramData) => {
       accountAgeDays
     });
 
-    // Generate commitment for privacy
+    // Generate Aleo-compatible commitment for privacy
     const platformId = 4; // Telegram = 4
     const secretSalt = process.env.SECRET_SALT || 'zkpersona-secret-salt';
-    const commitmentInput = `${platformId}:${id.toString()}:${secretSalt}`;
-    const commitment = crypto.createHash('sha256').update(commitmentInput).digest('hex') + 'field';
+    const commitment = generateAleoCommitment(platformId, id.toString(), secretSalt);
     
     return {
       valid: true,
@@ -170,26 +170,21 @@ export const telegramCallback = async (query, session) => {
       throw new Error(result.errors?.join(', ') || 'Verification failed');
     }
 
-    console.log('[Telegram] Verification successful:', {
-      userId: result.userId,
-      username: result.username,
-      score: result.score
-    });
+    const userIdStr = (result.record && result.record.id) ? String(result.record.id) : String(telegramData.id);
+    console.log('[Telegram] Verification successful:', { score: result.score });
 
-    // Generate commitment for privacy
+    // Generate Aleo-compatible commitment for privacy (must match backend aleoField)
     const platformId = 4; // Telegram = 4 (per spec)
     const secretSalt = process.env.SECRET_SALT || 'zkpersona-secret-salt';
-    const commitmentInput = `${platformId}:${result.userId}:${secretSalt}`;
-    const commitment = crypto.createHash('sha256').update(commitmentInput).digest('hex') + 'field';
-    
+    const commitment = generateAleoCommitment(platformId, userIdStr, secretSalt);
+
     return {
       verified: result.valid && result.score > 0,
       provider: 'telegram',
-      commitment: commitment, // PRIVACY: Return commitment, not userId
+      commitment,
       score: result.score,
       criteria: result.criteria,
       maxScore: result.maxScore,
-      // DO NOT return: userId, username, profile
     };
   }
   
@@ -229,11 +224,10 @@ export const telegramCallback = async (query, session) => {
         accountAgeDays
       });
       
-      // Generate commitment for privacy
+      // Generate Aleo-compatible commitment for privacy
       const platformId = 4; // Telegram = 4
       const secretSalt = process.env.SECRET_SALT || 'zkpersona-secret-salt';
-      const commitmentInput = `${platformId}:${telegramUserId.toString()}:${secretSalt}`;
-      const commitment = crypto.createHash('sha256').update(commitmentInput).digest('hex') + 'field';
+      const commitment = generateAleoCommitment(platformId, telegramUserId.toString(), secretSalt);
       
       return {
         verified: true,

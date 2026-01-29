@@ -1,6 +1,7 @@
 import axios from 'axios';
 import crypto from 'crypto';
 import { calculateDiscordScore } from '../scoring/discord.js';
+import { generateAleoCommitment } from '../utils/aleoField.js';
 
 // ============================================
 // Types documentation (following Gitcoin Passport pattern)
@@ -72,15 +73,29 @@ export const initClientAndGetAuthUrl = async (sessionId, callbackOverride) => {
     prompt: 'consent' // Show Discord OAuth page (like Propel)
   });
   
+  const authUrl = `https://discord.com/api/oauth2/authorize?${params.toString()}`;
+  
   console.log('[Discord] OAuth URL generated:', {
     clientId: DISCORD_CLIENT_ID.substring(0, 10) + '...',
     redirectUri: redirectUri,
     scopes: scopes,
-    state: state.substring(0, 20) + '...'
+    state: state.substring(0, 20) + '...',
+    fullAuthUrl: authUrl.substring(0, 100) + '...'
   });
+  
+  // IMPORTANT: Validate redirect_uri is registered in Discord Developer Portal
+  console.log('[Discord] ⚠️  IMPORTANT: Make sure this redirect_uri is registered in Discord Developer Portal:');
+  console.log('[Discord] ⚠️  Redirect URI:', redirectUri);
+  console.log('[Discord] ⚠️  Steps to fix 400 error:');
+  console.log('[Discord] ⚠️  1. Go to https://discord.com/developers/applications');
+  console.log('[Discord] ⚠️  2. Select your application');
+  console.log('[Discord] ⚠️  3. Go to OAuth2 > General');
+  console.log('[Discord] ⚠️  4. Add this exact redirect URI to "Redirects":', redirectUri);
+  console.log('[Discord] ⚠️  5. Save changes');
+  console.log('[Discord] ⚠️  6. If using ngrok, update redirect URI when ngrok URL changes');
 
   return {
-    authUrl: `https://discord.com/api/oauth2/authorize?${params.toString()}`,
+    authUrl,
     state
   };
 };
@@ -400,19 +415,15 @@ export class DiscordProvider {
 
   /**
    * Generate commitment hash for Aleo blockchain
-   * Format: SHA-256(platform_id:user_id:secret_salt)
+   * Format: SHA-256(platform_id:user_id:secret_salt) mod FIELD_MODULUS
+   * Returns a valid Aleo field element
    */
   generateCommitment(userId) {
     const platformId = 1; // Discord = 1 (per spec)
     const secretSalt = process.env.SECRET_SALT || 'zkpersona-secret-salt';
-    const input = `${platformId}:${userId}:${secretSalt}`;
     
-    const hash = crypto
-      .createHash('sha256')
-      .update(input)
-      .digest('hex');
-    
-    return `${hash}field`;
+    // Use Aleo field utility for proper field element format
+    return generateAleoCommitment(platformId, userId, secretSalt);
   }
 }
 

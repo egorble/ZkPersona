@@ -27,7 +27,7 @@ describe('explorerAPI', () => {
           type: 'transfer',
           status: 'confirmed',
           program: 'passport.aleo',
-          function: 'create_passport',
+          function: 'claim_points',
         },
       ];
 
@@ -96,7 +96,13 @@ describe('explorerAPI', () => {
   });
 
   describe('getTransactionUrl', () => {
-    it('should return correct URL for testnet', () => {
+    it('should return Provable testnet URL for testnet (default)', () => {
+      const url = getTransactionUrl('tx1', 'testnet');
+      expect(url).toContain('testnet.explorer.provable.com');
+      expect(url).toContain('tx1');
+    });
+
+    it('should return correct URL for testnet3', () => {
       const url = getTransactionUrl('tx1', 'testnet3');
       expect(url).toContain('explorer.aleo.org');
       expect(url).toContain('tx1');
@@ -118,7 +124,7 @@ describe('explorerAPI', () => {
           id: 'exec1',
           timestamp: 1234567890,
           status: 'confirmed',
-          function: 'create_passport',
+          function: 'claim_points',
         },
       ];
 

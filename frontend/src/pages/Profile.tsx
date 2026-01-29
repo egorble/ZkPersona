@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useWallet } from "@demox-labs/aleo-wallet-adapter-react";
-import { usePassport } from "../hooks/usePassport";
-import { PassportScore } from "../components/PassportScore";
+import { useVerification } from "../hooks/useVerification";
 import { StampCard } from "../components/StampCard";
 import { Stamp } from "../types";
 import { formatAddress } from "../utils/aleo";
@@ -22,7 +21,7 @@ interface DiscordProfile {
 
 export const Profile = () => {
     const { publicKey, connect, wallet, select, wallets } = useWallet();
-    const { passport } = usePassport();
+    const { verifications, getTotalScore } = useVerification(publicKey || undefined);
     const [stamps, setStamps] = useState<Stamp[]>([]);
     const [userStamps, setUserStamps] = useState<number[]>([]);
     const [discordProfile, setDiscordProfile] = useState<DiscordProfile | null>(null);
@@ -140,18 +139,9 @@ export const Profile = () => {
         );
     }
 
-    if (!passport) {
-        return (
-            <div className="profile-page fade-in">
-                <div className="profile-placeholder">
-                    <h2>Create your passport to view your profile</h2>
-                    <p>Go to Dashboard to create your passport</p>
-                </div>
-            </div>
-        );
-    }
-
     const earnedStamps = stamps.filter(s => userStamps.includes(s.stamp_id));
+    const totalScore = getTotalScore();
+    const verifiedCount = Object.values(verifications).filter((v) => v?.verified).length;
 
     // Get display name and avatar from Discord profile
     const displayName = discordProfile?.discordNickname || 
@@ -207,11 +197,11 @@ export const Profile = () => {
             </div>
 
             <div className="profile-content">
-                <PassportScore
-                    humanityScore={passport.humanity_score}
-                    totalStamps={passport.total_stamps}
-                    totalPoints={passport.total_points}
-                />
+                <div className="verification-score-block" style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--surface, #111)', borderRadius: '8px', border: '1px solid var(--border, #333)' }}>
+                    <h3 className="section-title" style={{ marginTop: 0 }}>Your verifications</h3>
+                    <p style={{ margin: '0.5rem 0', fontSize: '1rem' }}>Total score: <strong>{totalScore}</strong> pts</p>
+                    <p style={{ margin: 0, fontSize: '0.9rem', color: '#888' }}>{verifiedCount} provider{verifiedCount !== 1 ? 's' : ''} verified. Claim points on Dashboard.</p>
+                </div>
 
                 {earnedStamps.length > 0 ? (
                     <section className="profile-stamps-section">

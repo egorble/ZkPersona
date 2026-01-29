@@ -158,11 +158,12 @@ export const VerifyCallback: React.FC = () => {
             provider
           });
 
-          // Save verification result from backend (already verified, no API calls needed)
+          // Save verification result from backend (use backend commitment for claim_social_stamp)
           saveVerificationResult(provider, {
             score: session.result.score,
-            criteria: session.result.criteria,
-            metadataHash: session.result.metadataHash
+            criteria: session.result.criteria || [],
+            metadataHash: session.result.commitment || session.result.metadataHash,
+            commitment: session.result.commitment
           });
 
           // For Discord: Save session and profile (Propel-like behavior)

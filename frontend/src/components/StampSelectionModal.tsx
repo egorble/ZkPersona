@@ -69,7 +69,7 @@ export const StampSelectionModal: React.FC<StampSelectionModalProps> = ({
           <div>
             <h2 className="text-2xl font-bold font-mono uppercase text-white">Select Verification Methods</h2>
             <p className="text-neutral-400 text-sm mt-1 font-mono">
-              Choose the verification methods you want to connect to your passport
+              Choose the verification methods you want to connect
             </p>
           </div>
           <button
@@ -90,12 +90,15 @@ export const StampSelectionModal: React.FC<StampSelectionModalProps> = ({
                   key={stamp.id}
                   onClick={() => toggleStamp(stamp.id)}
                   className={`
-                    p-4 border rounded-lg cursor-pointer transition-all
+                    p-4 border rounded-lg cursor-pointer transition-all duration-300 relative overflow-hidden
                     ${isSelected 
-                      ? 'border-white bg-white/5' 
-                      : 'border-neutral-800 hover:border-neutral-700 bg-neutral-950'
+                      ? 'border-white bg-white/5 scale-105' 
+                      : 'border-neutral-800 hover:border-neutral-700 bg-neutral-950 hover:scale-105 active:scale-95'
                     }
                   `}
+                  style={{
+                    animation: isSelected ? 'scaleIn 0.2s ease-out' : undefined
+                  }}
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
@@ -147,7 +150,7 @@ export const StampSelectionModal: React.FC<StampSelectionModalProps> = ({
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="flex-1 px-6 py-3 border border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700 transition-colors font-mono uppercase text-sm"
+              className="flex-1 px-6 py-3 border border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700 transition-all duration-300 font-mono uppercase text-sm hover:scale-105 active:scale-95 relative overflow-hidden"
             >
               Cancel
             </button>
@@ -155,20 +158,23 @@ export const StampSelectionModal: React.FC<StampSelectionModalProps> = ({
               onClick={handleConfirm}
               disabled={selectedStamps.size === 0 || isConfirming}
               className={`
-                flex-1 px-6 py-3 font-mono uppercase text-sm transition-all flex items-center justify-center gap-2
+                flex-1 px-6 py-3 font-mono uppercase text-sm transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden
                 ${selectedStamps.size > 0 && !isConfirming
-                  ? 'bg-white text-black hover:bg-neutral-100'
+                  ? 'bg-white text-black hover:bg-neutral-100 hover:scale-105 active:scale-95'
                   : 'bg-neutral-800 text-neutral-600 cursor-not-allowed'
                 }
               `}
+              style={{
+                animation: isConfirming ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : undefined
+              }}
             >
               {isConfirming ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  Creating Passport...
+                  Continue...
                 </>
               ) : (
-                'Continue to Create Passport'
+                'Continue'
               )}
             </button>
           </div>

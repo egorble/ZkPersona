@@ -58,7 +58,7 @@ export const getProviderConfig = (provider) => {
  * Returns object with provider names as keys and { configured: boolean, missing: string[] }
  */
 export const getProviderStatus = () => {
-  const providers = ['google', 'twitter', 'discord', 'github', 'steam', 'tiktok', 'telegram'];
+  const providers = ['google', 'twitter', 'discord', 'github', 'steam', 'telegram'];
   const status = {};
   
   providers.forEach(provider => {
@@ -86,9 +86,6 @@ export const getProviderStatus = () => {
       
       if (provider === 'steam') {
         if (!process.env.STEAM_API_KEY) missing.push('STEAM_API_KEY');
-      } else if (provider === 'tiktok') {
-        if (!process.env.TIKTOK_CLIENT_ID) missing.push('TIKTOK_CLIENT_ID');
-        if (!process.env.TIKTOK_CLIENT_SECRET) missing.push('TIKTOK_CLIENT_SECRET');
       } else if (provider === 'telegram') {
         if (!process.env.TELEGRAM_BOT_TOKEN) missing.push('TELEGRAM_BOT_TOKEN');
       } else {

@@ -1,5 +1,5 @@
-// Aleo Passport Program ID
-// Deployed contract: zkpersona_passport_v2.aleo
-// Transaction ID: at1ey5dn0zanrfjs67z3y04905q8hrlmsfr3zdafefsmsjr9mgkuq8q0x2ag0
-export const PROGRAM_ID = "zkpersona_passport_v2.aleo";
+// Aleo Program ID (v5: default stamps in initialize, claim_social_stamp)
+// Deployed: zkpersona_passport_v5.aleo
+// Deploy TX: at12s6clltped7kp8k4jwk3xyn89mh5edur2yaef3ewqp9gs3au3vpqtnszz6
+export const PROGRAM_ID = "zkpersona_passport_v5.aleo";
 

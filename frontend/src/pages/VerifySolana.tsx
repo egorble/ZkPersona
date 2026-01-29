@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Loader2, Wallet, AlertCircle } from 'lucide-react';
 import { connectSolanaWallet, signSolanaMessage } from '../utils/solanaWallet';
-import { submitSolanaSignature } from '../utils/backendAPI';
+import { verifyWallet } from '../utils/backendAPI';
 
 export const VerifySolana: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -12,18 +12,18 @@ export const VerifySolana: React.FC = () => {
 
   useEffect(() => {
     const sessionId = searchParams.get('session');
-    const passportId = searchParams.get('passportId');
+    const walletId = searchParams.get('walletId') || searchParams.get('passportId');
 
-    if (!sessionId || !passportId) {
-      setError('Missing session or passport ID');
+    if (!sessionId || !walletId) {
+      setError('Missing session or wallet ID');
       setStatus('error');
       return;
     }
 
-    handleSolanaAuth(sessionId, passportId);
+    handleSolanaAuth(sessionId, walletId);
   }, [searchParams]);
 
-  const handleSolanaAuth = async (sessionId: string, passportId: string) => {
+  const handleSolanaAuth = async (sessionId: string, walletId: string) => {
     try {
       // Step 1: Connect wallet
       setStatus('connecting');
@@ -40,7 +40,7 @@ export const VerifySolana: React.FC = () => {
       // Step 2: Create SIWE-like message
       const domain = window.location.host;
       const origin = window.location.origin;
-      const statement = `Verify wallet ownership for Passport ${passportId}`;
+      const statement = 'Verify wallet ownership for this app';
       const message = `${domain} wants you to sign in with your Solana account:\n${walletInfo.address}\n\n${statement}\n\nURI: ${origin}\nVersion: 1\nNonce: ${sessionId}\nIssued At: ${new Date().toISOString()}`;
 
       // Step 3: Request signature
@@ -51,14 +51,21 @@ export const VerifySolana: React.FC = () => {
       localStorage.setItem('wallet_signature', signature);
       localStorage.setItem('wallet_message', message);
 
-      // Step 4: Submit to backend
+      // Step 4: Verify wallet (sync endpoint - no sessions needed)
       setStatus('submitting');
-      
-      const { submitSolanaSignature } = await import('../utils/backendAPI');
-      await submitSolanaSignature(sessionId, walletInfo.address, signature, message);
+      const result = await verifyWallet('solana', walletInfo.address, signature, message, walletId);
 
-      // Redirect to callback page to poll status
-      navigate(`/verify/callback?provider=solana&session=${sessionId}`);
+      // Store result in localStorage for parent component to pick up
+      localStorage.setItem(`verification_result_solana`, JSON.stringify({
+        ...result,
+        commitment: result.commitment || ''
+      }));
+
+      // Dispatch event to notify parent component
+      window.dispatchEvent(new Event('verification-updated'));
+
+      // Redirect back to main app
+      navigate('/');
     } catch (err: any) {
       if (err.message?.includes('rejected') || err.message?.includes('cancelled')) {
         navigate('/');

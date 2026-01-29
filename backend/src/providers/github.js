@@ -1,6 +1,7 @@
 import axios from 'axios';
 import crypto from 'crypto';
 import { calculateGitHubScore } from '../scoring/github.js';
+import { generateAleoCommitment } from '../utils/aleoField.js';
 
 // ============================================
 // Types documentation (following Gitcoin Passport pattern)
@@ -259,19 +260,15 @@ export class GitHubProvider {
 
   /**
    * Generate commitment hash for Aleo blockchain
-   * Format: SHA-256(platform_id:user_id:secret_salt)
+   * Format: SHA-256(platform_id:user_id:secret_salt) mod FIELD_MODULUS
+   * Returns a valid Aleo field element
    */
   generateCommitment(userId) {
     const platformId = 3; // GitHub = 3 (per spec)
     const secretSalt = process.env.SECRET_SALT || 'zkpersona-secret-salt';
-    const input = `${platformId}:${userId}:${secretSalt}`;
     
-    const hash = crypto
-      .createHash('sha256')
-      .update(input)
-      .digest('hex');
-    
-    return `${hash}field`;
+    // Use Aleo field utility for proper field element format
+    return generateAleoCommitment(platformId, userId, secretSalt);
   }
 }
 

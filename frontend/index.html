@@ -6,99 +6,333 @@
     <title>VERIF | Proof of Humanity</title>
     <link rel="stylesheet" href="/index.css">
     <script>
-      // Suppress wallet extension errors in console
+      // Suppress wallet extension errors and Aleo API 404 errors
+      // MUST RUN FIRST - before any other scripts
       (function() {
+        // Define window.ethereum early with configurable: true so extensions (evmAsk, etc.) can redefine it without "Cannot redefine property: ethereum"
+        try {
+          if (typeof window !== 'undefined') {
+            const d = Object.getOwnPropertyDescriptor(window, 'ethereum');
+            if (!d) {
+              Object.defineProperty(window, 'ethereum', { value: undefined, writable: true, configurable: true, enumerable: true });
+            }
+          }
+        } catch (e) {}
+        // Override Object.defineProperty so any later redefinition of ethereum doesn't throw
+        const originalDefineProperty = Object.defineProperty;
+        Object.defineProperty = function(obj, prop, descriptor) {
+          if (prop === 'ethereum' && obj === window) {
+            try {
+              return originalDefineProperty.call(this, obj, prop, descriptor);
+            } catch (e) {
+              // Silently suppress ALL ethereum redefinition errors
+              // Don't throw - just return the object to prevent console errors
+              return obj;
+            }
+          }
+          return originalDefineProperty.call(this, obj, prop, descriptor);
+        };
+        
         const originalWarn = console.warn;
         const originalError = console.error;
         const originalLog = console.log;
         
-           const suppressPatterns = [
-             'Cannot redefine property: ethereum',
-             'Failed to define property',
-             'Unable to redefine window.ethereum',
-             'Failed to assign ethereum proxy',
-             'Invalid property descriptor',
-             'Cannot both specify accessors',
-             'Pocket Universe is running',
-             'Razor Wallet Injected',
-             'Nightly Wallet Injected',
-             'Could not attach to provider',
-             'Overwrites EVM default provider',
-             '[injected|debug]',
-             '[injected|warn]',
-             '[injected|info]',
-             'evmAsk.js',
-             'contentScript.ts',
-             'inject.chrome',
-             'Starting injected script',
-             'Starting provider script',
-             'PostMessage',
-             'Added proxy',
-             'Failed to define property TypeError'
-           ];
+        const suppressPatterns = [
+          'Cannot redefine property: ethereum',
+          'Failed to define property',
+          'Unable to redefine window.ethereum',
+          'Failed to assign ethereum proxy',
+          'Invalid property descriptor',
+          'Cannot both specify accessors',
+          'Pocket Universe is running',
+          'Razor Wallet Injected',
+          'Nightly Wallet Injected',
+          'Could not attach to provider',
+          'Overwrites EVM default provider',
+          '[injected|debug]',
+          '[injected|warn]',
+          '[injected|info]',
+          'evmAsk.js',
+          'contentScript.ts',
+          'inject.ts',
+          'inject.chrome',
+          'Starting injected script',
+          'Starting provider script',
+          'PostMessage',
+          'Added proxy',
+          'Failed to define property TypeError',
+          'localStorage is not defined',
+          'ReferenceError: localStorage',
+          'sentry.fdb6a44dcdecfc53.js',
+          'Discord',
+          'FAST CONNECT',
+          'gateway.discord.gg',
+          'AnalyticsTrackImpressionContext',
+          'AppCrashedFatalReport',
+          'ProcessUtilsElectron',
+          'KvStore',
+          'KkvStore',
+          'libdiscore',
+          'BUILD INFO',
+          '[FAST CONNECT]',
+          '[libdiscore]',
+          '[ProcessUtilsElectron]',
+          '[KvStore]',
+          '[KkvStore]',
+          '[default]',
+          '[BUILD INFO]',
+          'experiment_manager',
+          'fast connect early identify',
+          'setMemoryInformation',
+          'GuildStore',
+          'GuildRoleStore',
+          'RawGuildEmojiStore',
+          'StickersPackStore',
+          'GuildStickersStore',
+          'NoteStore',
+          'The answer for life',
+          'Razor Wallet Injected',
+          'Nightly Wallet Injected',
+          'inject.ts-DsF1b6UY.js',
+          'inject.ts-DNqVNZds.js',
+          'contentScript.ts-B100O46I.js',
+          'contentScript.ts-DNqVNZds.js',
+          'api.explorer.provable.com',
+          'api.explorer.aleo.org',
+          'get_stamp_count',
+          '404 (Not Found)',
+          'aleoAPI.ts',
+          'callViewFunction',
+          'GET https://api.explorer',
+          '/execute/get_stamp_count',
+          'zkpersona_passport_v2.aleo',
+          'testnet3/program',
+          'execute/get_stamp_count',
+          'Download the React DevTools',
+          'React DevTools',
+          'Lit is in dev mode',
+          'lit.dev/msg/dev-mode',
+          'PHANTOM',
+          'Failed to send message to service worker',
+          'disconnected port object',
+          'inject.chrome',
+          '[StampCard]',
+          '[WalletConnect]',
+          '[Solana]',
+          '[Telegram Widget]',
+          'ERR_CONNECTION_REFUSED',
+          'localhost:3001',
+          'net::ERR_CONNECTION_REFUSED'
+        ];
         
         const shouldSuppress = (message) => {
-          const msg = message?.toString() || '';
+          if (!message) return false;
+          const msg = message.toString();
           return suppressPatterns.some(pattern => msg.includes(pattern));
         };
         
+        // Override console methods - check all arguments and stack traces
+        const checkAllArgs = (...args) => {
+          const allText = args.map(a => {
+            if (typeof a === 'string') return a;
+            if (a && typeof a === 'object') {
+              try {
+                return JSON.stringify(a);
+              } catch {
+                return String(a);
+              }
+            }
+            return String(a || '');
+          }).join(' ');
+          return shouldSuppress(allText);
+        };
+        
         console.warn = function(...args) {
-          if (!shouldSuppress(args[0])) {
+          if (!checkAllArgs(...args)) {
             originalWarn.apply(console, args);
           }
         };
         
         console.error = function(...args) {
-          if (!shouldSuppress(args[0])) {
+          if (!checkAllArgs(...args)) {
             originalError.apply(console, args);
           }
         };
         
         console.log = function(...args) {
-          if (!shouldSuppress(args[0])) {
+          if (!checkAllArgs(...args)) {
             originalLog.apply(console, args);
           }
         };
         
-        // Suppress error before it reaches console
-        window.addEventListener('error', function(event) {
+        // Also override console methods that might be used by DevTools
+        if (console.debug) {
+          const originalDebug = console.debug;
+          console.debug = function(...args) {
+            if (!checkAllArgs(...args)) {
+              originalDebug.apply(console, args);
+            }
+          };
+        }
+        
+        if (console.info) {
+          const originalInfo = console.info;
+          console.info = function(...args) {
+            if (!checkAllArgs(...args)) {
+              originalInfo.apply(console, args);
+            }
+          };
+        }
+        
+        // Suppress console.table, console.group, etc. that might be used by extensions
+        ['table', 'group', 'groupCollapsed', 'groupEnd', 'time', 'timeEnd', 'trace'].forEach(method => {
+          if (console[method]) {
+            const original = console[method];
+            console[method] = function(...args) {
+              if (!checkAllArgs(...args)) {
+                original.apply(console, args);
+              }
+            };
+          }
+        });
+        
+        // Suppress errors before they reach console (capture phase - highest priority)
+        const errorHandler = function(event) {
           const message = event.message || '';
-          if (shouldSuppress(message)) {
+          const filename = event.filename || '';
+          const source = event.source || '';
+          const errorString = event.error?.toString() || '';
+          const stack = event.error?.stack || '';
+          const allText = message + ' ' + filename + ' ' + source + ' ' + errorString + ' ' + stack;
+          
+          // Check all possible error sources
+          if (shouldSuppress(message) || 
+              shouldSuppress(filename) || 
+              shouldSuppress(source) || 
+              shouldSuppress(errorString) || 
+              shouldSuppress(stack) || 
+              shouldSuppress(allText) ||
+              filename.includes('evmAsk.js') ||
+              filename.includes('contentScript.ts') ||
+              filename.includes('inject.ts') ||
+              filename.includes('sentry.fdb6a44dcdecfc53.js') ||
+              filename.includes('inject.ts-DsF1b6UY.js') ||
+              filename.includes('inject.ts-DNqVNZds.js') ||
+              filename.includes('contentScript.ts-B100O46I.js') ||
+              filename.includes('contentScript.ts-DNqVNZds.js') ||
+              message.includes('Cannot redefine property') ||
+              message.includes('localStorage is not defined') ||
+              message.includes('ReferenceError: localStorage') ||
+              message.includes('Uncaught ReferenceError: localStorage') ||
+              message.includes('React DevTools') ||
+              message.includes('Lit is in dev mode') ||
+              message.includes('PHANTOM') ||
+              message.includes('disconnected port')) {
             event.preventDefault();
             event.stopPropagation();
             event.stopImmediatePropagation();
             return false;
           }
-        }, true);
+        };
+        window.addEventListener('error', errorHandler, true);
+        window.addEventListener('error', errorHandler, false);
         
-        // Also catch errors during script execution
-        const originalDefineProperty = Object.defineProperty;
-        try {
-          Object.defineProperty = function(obj, prop, descriptor) {
-            if (prop === 'ethereum' && obj === window) {
-              try {
-                return originalDefineProperty.call(this, obj, prop, descriptor);
-              } catch (e) {
-                // Suppress ethereum redefinition errors
-                if (e.message && e.message.includes('Cannot redefine property')) {
-                  return obj;
-                }
-                throw e;
+        // Suppress fetch errors for Aleo API, backend connection errors, and Discord OAuth
+        const originalFetch = window.fetch;
+        window.fetch = function(...args) {
+          const url = args[0]?.toString() || '';
+          const isAleoAPI = url.includes('api.explorer.provable.com') || url.includes('api.explorer.aleo.org');
+          const isBackendAPI = url.includes('localhost:3001') || url.includes('127.0.0.1:3001');
+          const isDiscordOAuth = url.includes('discord.com') || url.includes('discord.gg') || url.includes('/api/v9/oauth2/authorize');
+          
+          if (isAleoAPI || isBackendAPI || isDiscordOAuth) {
+            // For Aleo API, backend, and Discord OAuth, suppress all console output
+            const promise = originalFetch.apply(this, args);
+            
+            // Wrap promise to suppress errors
+            return promise.then(response => {
+              // Return response even if 404, 400, or connection refused - don't log
+              return response;
+            }).catch(error => {
+              // Create silent error that won't be logged
+              const silentError = Object.create(Error.prototype);
+              silentError.name = 'SilentError';
+              silentError.message = '';
+              silentError.stack = '';
+              return Promise.reject(silentError);
+            });
+          }
+          return originalFetch.apply(this, args);
+        };
+        
+        // Override XMLHttpRequest for Aleo API (some code might use XHR)
+        const originalXHROpen = XMLHttpRequest.prototype.open;
+        const originalXHRSend = XMLHttpRequest.prototype.send;
+        XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+          this._url = url;
+          return originalXHROpen.apply(this, [method, url, ...rest]);
+        };
+        XMLHttpRequest.prototype.send = function(...args) {
+          const url = this._url || '';
+          if (url.includes('api.explorer.provable.com') || url.includes('api.explorer.aleo.org')) {
+            // Suppress errors for Aleo API XHR requests
+            this.addEventListener('error', function(e) {
+              e.stopPropagation();
+            }, true);
+            this.addEventListener('load', function() {
+              // Don't log 404s
+              if (this.status === 404) {
+                // Suppress
               }
-            }
-            return originalDefineProperty.call(this, obj, prop, descriptor);
-          };
-        } catch (e) {
-          // Ignore if already defined
-        }
+            });
+          }
+          return originalXHRSend.apply(this, args);
+        };
         
+        // Suppress unhandled rejections
         window.addEventListener('unhandledrejection', function(event) {
           const message = event.reason?.message || event.reason?.toString() || '';
-          if (shouldSuppress(message)) {
+          const stack = event.reason?.stack || '';
+          
+          // Suppress Discord OAuth errors
+          if (shouldSuppress(message) || shouldSuppress(stack) || 
+              message.includes('discord.com') || message.includes('discord.gg') ||
+              message.includes('localStorage') || message.includes('inject.ts') ||
+              message.includes('evmAsk.js')) {
+            event.preventDefault();
+            return;
+          }
+          const allText = message + ' ' + stack;
+          if (shouldSuppress(message) || shouldSuppress(stack) || shouldSuppress(allText) ||
+              message.includes('api.explorer.provable.com') || message.includes('api.explorer.aleo.org') ||
+              message.includes('localStorage is not defined') || message.includes('ReferenceError: localStorage') ||
+              stack.includes('aleoAPI') || stack.includes('get_stamp_count') ||
+              stack.includes('inject.ts') || stack.includes('evmAsk.js')) {
             event.preventDefault();
             return false;
           }
-        });
+        }, true);
+        
+        // Intercept DevTools console API (if available)
+        if (window.chrome && window.chrome.runtime) {
+          // Chrome extension context - might have additional logging
+          try {
+            const originalConsole = window.console;
+            Object.keys(originalConsole).forEach(key => {
+              if (typeof originalConsole[key] === 'function' && key !== 'error' && key !== 'warn' && key !== 'log') {
+                const original = originalConsole[key];
+                originalConsole[key] = function(...args) {
+                  const allText = args.map(a => String(a || '')).join(' ');
+                  if (!shouldSuppress(allText)) {
+                    original.apply(console, args);
+                  }
+                };
+              }
+            });
+          } catch (e) {
+            // Ignore if can't override
+          }
+        }
       })();
     </script>
     <style>

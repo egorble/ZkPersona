@@ -1,10 +1,23 @@
-import React, { useEffect, useState } from 'react';
-import { X, ExternalLink, Check, Loader2, AlertCircle, Wallet } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { X, ExternalLink, Check, Loader2, AlertCircle, Wallet, Coins, Clock } from 'lucide-react';
+import { GlobalLoader } from './GlobalLoader';
 import { getVerificationInstructions, initiateOAuth } from '../utils/verificationProviders';
 import { VerificationScoreCard } from './VerificationScoreCard';
 import { useVerification } from '../hooks/useVerification';
 import { VERIFICATION_CONFIGS } from '../services/verificationService';
 import { useWallet } from '@demox-labs/aleo-wallet-adapter-react';
+import { WalletAdapterNetwork, Transaction } from '@demox-labs/aleo-wallet-adapter-base';
+import { requestTransactionWithRetry } from '../utils/walletUtils';
+import { WalletConnectModal } from './WalletConnectModal';
+import { SolanaWalletModal } from './SolanaWalletModal';
+import { connectEVMWallet, signMessage } from '../utils/evmWallet';
+import { connectSolanaWallet, signSolanaMessage } from '../utils/solanaWallet';
+import { startVerification, verifyWallet, VerificationResult } from '../utils/backendAPI';
+import { providerToPlatformId } from '../utils/platformMapping';
+import { PROGRAM_ID } from '../deployed_program';
+import { usePassportRecords } from '../hooks/usePassportRecords';
+import { usePassport } from '../hooks/usePassport';
+import { getAllStamps } from '../utils/aleoAPI';
 
 interface VerificationInstructionsProps {
   isOpen: boolean;
@@ -19,11 +32,27 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
   selectedStamps,
   onStartVerification
 }) => {
-  const { publicKey } = useWallet();
-  const { verifications, verifyProvider, verifying, getVerification } = useVerification(publicKey || undefined);
+  const { publicKey, wallet } = useWallet();
+  const adapter = wallet?.adapter as any;
+  const network = WalletAdapterNetwork.TestnetBeta;
+  const { verifications, verifying, getVerification, saveVerificationResult } = useVerification(publicKey || undefined);
+  const { requestPassportRecords } = usePassportRecords();
+  const { createPassport } = usePassport();
   const [connectingWallet, setConnectingWallet] = useState<string | null>(null);
   const [connectedWalletInfo, setConnectedWalletInfo] = useState<{ address: string; provider: string } | null>(null);
   const [showWalletRequiredModal, setShowWalletRequiredModal] = useState(false);
+  const [showEVMWalletModal, setShowEVMWalletModal] = useState(false);
+  const [showSolanaWalletModal, setShowSolanaWalletModal] = useState(false);
+  const [currentWalletId, setCurrentWalletId] = useState<string | null>(null);
+  
+  // GITCOIN PASSPORT MODEL: Verification result state (not stored in localStorage)
+  const [verificationResults, setVerificationResults] = useState<Record<string, VerificationResult & { commitment: string }>>({});
+  const [claimingProvider, setClaimingProvider] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [successModalProvider, setSuccessModalProvider] = useState<string | null>(null);
+  const [initContractInProgress, setInitContractInProgress] = useState(false);
+  const setupInProgressRef = useRef(false);
 
   // Load connected wallet info on mount and when modal opens
   useEffect(() => {
@@ -36,36 +65,7 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
     }
   }, [isOpen]);
 
-  // Check for OAuth callback
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    const state = urlParams.get('state');
-    const providerId = urlParams.get('provider');
-
-    if (code && state && providerId) {
-      // OAuth callback - exchange code for token and verify
-      handleOAuthCallback(providerId, code, state);
-    }
-  }, [isOpen]);
-
-  const handleOAuthCallback = async (providerId: string, code: string, state: string) => {
-    try {
-      // TODO: Exchange code for access token via backend
-      // For now, mock - in production this should be done server-side
-      
-      // After getting access token, verify provider
-      // const accessToken = await exchangeCodeForToken(providerId, code);
-      // await verifyProvider(providerId, { accessToken });
-      
-      // Remove callback params from URL
-      window.history.replaceState({}, '', window.location.pathname);
-    } catch (error) {
-      console.error('[OAuth] Callback error:', error);
-    }
-  };
+  // GITCOIN PASSPORT MODEL: No OAuth callback handling - all done via postMessage
 
   if (!isOpen) return null;
 
@@ -83,78 +83,89 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
       return;
     }
 
-    // Get passport ID from connected wallet (use full publicKey, not truncated)
-    const passportId = publicKey || 
-                      localStorage.getItem('passport_id') || 
+    const walletId = publicKey || 
+                      localStorage.getItem('wallet_id') || 
                       localStorage.getItem('aleo_public_key') || 
                       'default';
-    
-    if (!publicKey) {
-      console.error('[VerificationInstructions] ❌ No publicKey available for passportId');
-    }
-    
-    console.log('[VerificationInstructions] 📝 Using passportId:', {
-      hasPublicKey: !!publicKey,
-      passportId: passportId.substring(0, 20) + '...',
-      passportIdLength: passportId.length
-    });
-    
-    localStorage.setItem('passport_id', passportId);
+    localStorage.setItem('wallet_id', walletId);
 
     // Normalize provider ID
     const providerId = stampId === 'eth_wallet' ? 'evm' : stampId;
 
-    // Handle EVM Wallet (SIWE via backend)
+    // Handle EVM Wallet - DISABLED (Coming Soon)
     if (stampId === 'ethereum' || stampId === 'eth_wallet') {
-      setConnectingWallet(stampId);
-      try {
-        // Start backend verification flow - redirects to /verify/evm
-        const { startVerification } = await import('../utils/backendAPI');
-        
-        console.log(`[EVM] 🔐 Starting EVM verification via backend...`);
-        startVerification('evm', passportId);
-        // Note: startVerification redirects, so code below won't execute
-        return;
-      } catch (error) {
-        console.error('[EVM] Error starting verification:', error);
-        alert('Failed to start verification. Please try again.');
-        setConnectingWallet(null);
-      }
+      alert('EVM Wallet verification is coming soon. Please check back later.');
       return;
     }
 
-    // Handle Solana Wallet (via backend)
     if (stampId === 'solana') {
-      setConnectingWallet(stampId);
-      try {
-        // Start backend verification flow - redirects to /verify/solana
-        const { startVerification } = await import('../utils/backendAPI');
-        
-        console.log(`[Solana] 🔐 Starting Solana verification via backend...`);
-        startVerification('solana', passportId);
-        // Note: startVerification redirects, so code below won't execute
-        return;
-      } catch (error) {
-        console.error('[Solana] Error starting verification:', error);
-        alert('Failed to start verification. Please try again.');
-        setConnectingWallet(null);
-      }
+      setCurrentWalletId(walletId);
+      setShowSolanaWalletModal(true);
       return;
     }
 
-    // Handle OAuth providers (Discord, Telegram, TikTok) - All via backend
-    if (['discord', 'telegram', 'tiktok'].includes(stampId)) {
+    // Handle OAuth providers (Discord, Telegram) - Popup flow
+    if (['discord', 'telegram'].includes(stampId)) {
       try {
-        const { startVerification } = await import('../utils/backendAPI');
+        setIsVerifying(stampId);
+        setIsLoading(true);
+        console.log(`[Verification] Starting OAuth verification for ${stampId}`);
+        const result = await startVerification(stampId, walletId);
         
-        // Use backend for all OAuth providers (no frontend env needed)
-        console.log(`[OAuth] 🔐 Starting ${stampId} OAuth flow via backend...`);
-        startVerification(stampId, passportId);
-        return;
+        // Store result in component state (for immediate UI update)
+        setVerificationResults(prev => ({
+          ...prev,
+          [stampId]: { ...result, commitment: result.commitment || '' }
+        }));
+        
+        // IMPORTANT: Save to persistent storage via useVerification hook
+        // This ensures result persists after page reload
+        saveVerificationResult(stampId, {
+          score: result.score,
+          criteria: result.criteria || [],
+          metadataHash: result.commitment || ''
+        });
+        
+        console.log(`[Verification] Successfully verified ${stampId}. Score: ${result.score}, Commitment: ${result.commitment}`);
+        console.log(`[Verification] Result saved to persistent storage`);
+        const setupOk = await ensureClaimSetup();
+        if (setupOk) setSuccessModalProvider(stampId);
       } catch (error) {
-        console.error(`[OAuth] Error starting ${stampId} verification:`, error);
         const errorMsg = error instanceof Error ? error.message : String(error);
-        alert(`Failed to start ${stampId} verification: ${errorMsg}\n\nPlease check backend configuration.`);
+        const errorStack = error instanceof Error ? error.stack : undefined;
+        
+        // Check for connection errors
+        const isConnectionError = errorMsg.includes('connection refused') || 
+                                  errorMsg.includes('ERR_CONNECTION_REFUSED') ||
+                                  errorMsg.includes('Cannot connect to backend') ||
+                                  errorMsg.includes('Backend server');
+        
+        const errorDetails = {
+          provider: stampId,
+          walletId,
+          message: errorMsg,
+          stack: errorStack,
+          type: error instanceof Error ? error.constructor.name : typeof error,
+          isConnectionError,
+          backendUrl: import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001',
+          possibleCauses: isConnectionError ? [
+            'Backend server is not running',
+            'Backend server is not accessible',
+            'Network connectivity issues'
+          ] : undefined
+        };
+        
+        console.error(`[Verification] Failed to verify ${stampId}. Reason: ${errorMsg}`, errorDetails);
+        
+        // Show user-friendly error message
+        const userMessage = isConnectionError 
+          ? `Cannot connect to backend server. Please ensure the backend server is running on ${errorDetails.backendUrl}`
+          : `Failed to verify ${stampId}: ${errorMsg}`;
+        
+        alert(userMessage);
+      } finally {
+        setIsVerifying(null);
+        setIsLoading(false);
       }
       return;
     }
@@ -168,6 +179,206 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
     // For other providers (blockchain, AI), trigger verification flow
     onStartVerification(stampId);
   };
+
+  const byClaimRecord = (r: any) => {
+    const pt = typeof r === 'string' ? r : (r?.plaintext ?? '');
+    return String(pt).includes('total_stamps');
+  };
+
+  const getClaimRecordPlaintext = async (): Promise<string | null> => {
+    const records = await requestPassportRecords();
+    const rec = records.find(byClaimRecord);
+    if (!rec) return null;
+    return typeof rec === 'string' ? rec : (rec.plaintext ?? JSON.stringify(rec));
+  };
+
+  const ensureClaimSetup = async (): Promise<string | null> => {
+    let records = await requestPassportRecords();
+    let rec = records.find(byClaimRecord);
+    if (!rec) {
+      if (setupInProgressRef.current) {
+        for (let i = 0; i < 15; i++) {
+          await new Promise((r) => setTimeout(r, 800));
+          const plain = await getClaimRecordPlaintext();
+          if (plain) return plain;
+        }
+        return null;
+      }
+      try {
+        setupInProgressRef.current = true;
+        await createPassport();
+        await new Promise((r) => setTimeout(r, 2500));
+        records = await requestPassportRecords();
+        rec = records.find(byClaimRecord);
+      } catch (e: any) {
+        console.warn('[Setup] Setup tx failed:', e?.message);
+        return null;
+      } finally {
+        setupInProgressRef.current = false;
+      }
+    }
+    if (!rec) return null;
+    return typeof rec === 'string' ? rec : (rec.plaintext ?? JSON.stringify(rec));
+  };
+
+  const ensureClaimRecordAndClaim = async (): Promise<string | null> => {
+    return ensureClaimSetup();
+  };
+
+  // Claim Points - Manual only (user clicks button in success modal or grid)
+  // Use verificationResults (popup flow) or getVerification (Telegram/Solana via VerifyCallback)
+  const handleClaimPoints = async (provider: string, fromSuccessModal?: boolean) => {
+    if (!publicKey || !adapter?.requestTransaction) {
+      const errorDetails = {
+        reason: 'Aleo wallet not connected',
+        hasPublicKey: !!publicKey,
+        hasAdapter: !!adapter,
+        hasRequestTransaction: !!adapter?.requestTransaction
+      };
+      console.error('[Claim Points] Cannot claim points. Reason: Aleo wallet not connected', errorDetails);
+      alert('Please connect Aleo wallet first');
+      return;
+    }
+
+    let result = verificationResults[provider];
+    if (!result) {
+      const persisted = getVerification(provider);
+      if (persisted?.verified && persisted?.commitment) {
+        result = {
+          score: persisted.score,
+          commitment: persisted.commitment,
+          criteria: persisted.criteria || []
+        };
+      }
+    }
+    if (!result || !result.commitment) {
+      const errorDetails = {
+        reason: 'No verification result or commitment found',
+        provider,
+        availableProviders: Object.keys(verificationResults)
+      };
+      console.error('[Claim Points] Cannot claim points. Reason: No verification result found', errorDetails);
+      alert('No verification result found. Please verify first (e.g. complete Telegram in bot or connect Solana wallet).');
+      return;
+    }
+
+    try {
+      setClaimingProvider(provider);
+      console.log(`[Claim Points] Starting claim for provider: ${provider}, score: ${result.score}`);
+
+      const passportPlaintext = fromSuccessModal
+        ? await getClaimRecordPlaintext()
+        : await ensureClaimRecordAndClaim();
+      if (!passportPlaintext) {
+        if (fromSuccessModal) alert('Setup required. Please complete the one-time wallet step first.');
+        else alert('Could not complete claim. Please try again.');
+        setClaimingProvider(null);
+        return;
+      }
+
+      const platformId = providerToPlatformId(provider);
+      if (platformId === 0) {
+        throw new Error(`Unsupported provider: ${provider}`);
+      }
+
+      // Contract requires commitment to be registered first via claim_social_stamp.
+      const stamps = await getAllStamps();
+      let stamp = stamps.find((s) => s.platform_id === platformId && s.is_active);
+      if (!stamp && stamps.length === 0 && publicKey && adapter?.requestTransaction) {
+        const runInit = window.confirm(
+          "Contract not initialized yet. Run one-time setup? (You will sign one transaction to create default stamps.)"
+        );
+        if (runInit) {
+          setInitContractInProgress(true);
+          try {
+            const initTx = Transaction.createTransaction(
+              publicKey,
+              network,
+              PROGRAM_ID,
+              "initialize",
+              [publicKey],
+              50_000,
+              false
+            );
+            await requestTransactionWithRetry(adapter, initTx, { timeout: 30_000, maxRetries: 2 });
+            await new Promise((r) => setTimeout(r, 2000));
+            const stampsAfter = await getAllStamps();
+            stamp = stampsAfter.find((s) => s.platform_id === platformId && s.is_active);
+          } finally {
+            setInitContractInProgress(false);
+          }
+        }
+      }
+      if (!stamp) {
+        throw new Error(
+          stamps.length === 0
+            ? "Contract not initialized. Run one-time setup (sign initialize transaction) and try again."
+            : `No stamp for ${provider} (platform_id ${platformId}).`
+        );
+      }
+
+      let commitment = result.commitment;
+      if (!commitment.endsWith('field')) commitment = commitment + 'field';
+      // Contract requires points to match stamp exactly; use stamp.points (default stamps set in initialize())
+      const pointsU64 = `${stamp.points}u64`;
+
+      // claim_social_stamp: registers commitment on-chain and issues stamp record. (private passport, public platform_id, private commitment, public stamp_id, public points)
+      const transaction = Transaction.createTransaction(
+        publicKey,
+        network,
+        PROGRAM_ID,
+        "claim_social_stamp",
+        [passportPlaintext, `${platformId}u8`, commitment, `${stamp.stamp_id}u32`, pointsU64],
+        50_000,
+        false
+      );
+
+      const txId = await requestTransactionWithRetry(adapter, transaction, {
+        timeout: 30_000,
+        maxRetries: 3
+      });
+      console.log(`[Claim Points] Successfully claimed ${result.score} points for ${provider}. Transaction ID: ${txId}`);
+
+      const explorerUrl = `https://testnet.explorer.provable.com/transaction/${txId}`;
+      const msg = txId.startsWith("at")
+        ? `Points claimed!\n\nProvider: ${provider}\nPoints: ${result.score}\n\nTransaction: ${txId.slice(0, 12)}...\n\nOpen in explorer: ${explorerUrl}`
+        : `Points claimed!\n\nProvider: ${provider}\nPoints: ${result.score}\n\nIf the transaction doesn't appear in the explorer, open Leo Wallet → Transaction history and open the transaction there to get the real tx id.`;
+      alert(msg);
+      if (txId.startsWith("at")) {
+        window.open(explorerUrl, "_blank");
+      }
+      
+      setVerificationResults(prev => {
+        const next = { ...prev };
+        delete next[provider];
+        return next;
+      });
+      setClaimingProvider(null);
+    } catch (error: any) {
+      const errorDetails = {
+        provider,
+        reason: error.message || 'Unknown error',
+        type: error?.constructor?.name || typeof error,
+        stack: error?.stack,
+        hasPublicKey: !!publicKey,
+        hasResult: !!result,
+        resultScore: result?.score,
+        resultCommitment: result?.commitment
+      };
+      console.error(`[Claim Points] Failed to claim points for ${provider}. Reason: ${error.message || 'Unknown error'}`, errorDetails);
+      alert(error.message || 'Failed to claim points');
+      setClaimingProvider(null);
+    }
+  };
+
+  if (isLoading && isVerifying) {
+    return (
+      <GlobalLoader 
+        fullScreen 
+        message={`Verifying ${isVerifying}...`}
+      />
+    );
+  }
 
   return (
     <div 
@@ -200,15 +411,15 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
         <div className="flex-1 overflow-y-auto p-6">
           <div className="space-y-8">
             {(() => {
-              // Filter out already connected providers
+              // Show stamps that need verification OR verified with commitment (Telegram/Solana/Discord) so user can Claim
               const unverifiedStamps = selectedStamps.filter((stampId) => {
                 const verificationId = stampId === 'eth_wallet' ? 'ethereum' : stampId;
                 const verification = getVerification(verificationId);
                 const isConnected = verification?.verified && verification.status === 'connected';
-                return !isConnected;
+                const canClaim = verification?.commitment && ['telegram', 'solana', 'discord'].includes(stampId);
+                return !isConnected || canClaim;
               });
 
-              // If all are already verified, show message
               if (unverifiedStamps.length === 0 && selectedStamps.length > 0) {
                 return (
                   <div className="text-center py-12">
@@ -237,10 +448,6 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
               
               const isConnected = verification?.verified && verification.status === 'connected';
               
-              // Debug log
-              if (isConnected) {
-                console.log(`[VerificationInstructions] ✅ ${stampId} (${verificationId}) is connected - hiding instructions`);
-              }
               
               return (
                 <div
@@ -252,8 +459,17 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
                       <h3 className="text-xl font-bold font-mono uppercase text-white mb-2">
                         {instructions.provider}
                       </h3>
-                      {/* Show connected wallet info for EVM and Solana */}
-                      {(isEVM || isSolana) && connectedWalletInfo && (
+                      {/* Show "Coming Soon" message for EVM */}
+                      {isEVM && (
+                        <div className="mt-2 p-3 bg-neutral-900 border border-neutral-700 rounded text-sm">
+                          <div className="flex items-center gap-2 text-neutral-400">
+                            <Clock size={14} />
+                            <span className="font-mono text-xs">EVM Wallet verification is coming soon</span>
+                          </div>
+                        </div>
+                      )}
+                      {/* Show connected wallet info for Solana */}
+                      {isSolana && connectedWalletInfo && (
                         <div className="mt-2 p-3 bg-neutral-900 border border-neutral-700 rounded text-sm">
                           <div className="flex items-center gap-2 text-neutral-300">
                             <span className="font-mono text-xs">Connected:</span>
@@ -262,48 +478,118 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
                           </div>
                         </div>
                       )}
-                      {/* Show verification result */}
+                      {/* Show verification result from blockchain or pending claim */}
                       {verification?.verified && (
                         <div className="mt-2 p-3 bg-green-950/30 border border-green-800/50 rounded">
                           <div className="flex items-center justify-between">
-                            <span className="text-green-400 font-mono text-sm">✓ Verified</span>
+                            <span className="text-green-400 font-mono text-sm">вњ“ Verified</span>
                             <span className="text-green-400 font-bold font-mono">{verification.score} / {config?.maxScore || 35} pts</span>
                           </div>
                           {verification.criteria && verification.criteria.length > 0 && (
                             <div className="mt-2 space-y-1">
                               {verification.criteria.map((criterion, idx) => (
                                 <div key={idx} className="text-xs text-green-300 font-mono">
-                                  • {criterion.condition}: +{criterion.points} pts
+                                  вЂў {criterion.condition}: +{criterion.points} pts
                                 </div>
                               ))}
                             </div>
                           )}
                         </div>
                       )}
+                      
+                      {/* Show pending verification result (popup flow: Discord) or persisted (Telegram/Solana callback) — Claim Points */}
+                      {(verificationResults[stampId] && !verification?.verified) || (verification?.verified && verification?.commitment && ['telegram', 'solana', 'discord'].includes(stampId)) ? (
+                        <div className="mt-2 p-3 bg-blue-950/30 border border-blue-800/50 rounded">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-blue-400 font-mono text-sm">Verification Complete</span>
+                            <span className="text-blue-400 font-bold font-mono">
+                              {(verificationResults[stampId]?.score ?? verification?.score) ?? 0} pts
+                            </span>
+                          </div>
+                          {((verificationResults[stampId]?.criteria ?? verification?.criteria) || []).length > 0 && (
+                            <div className="mt-2 space-y-1 mb-3">
+                              {((verificationResults[stampId]?.criteria ?? verification?.criteria) || []).map((criterion: { condition: string; points: number }, idx: number) => (
+                                <div key={idx} className="text-xs text-blue-300 font-mono">
+                                  • {criterion.condition}: +{criterion.points} pts
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div className="mb-3 p-2 bg-blue-900/20 border border-blue-700/30 rounded text-xs text-blue-300 font-mono">
+                            Verification complete. Claim points to add them to your wallet on-chain.
+                          </div>
+                          <button
+                            onClick={() => handleClaimPoints(stampId)}
+                            disabled={claimingProvider === stampId || !publicKey}
+                            className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-neutral-800 disabled:text-neutral-400 text-white font-mono uppercase text-sm transition-all duration-300 flex items-center justify-center gap-2 hover:scale-105 active:scale-95 disabled:scale-100 relative overflow-hidden"
+                            style={{
+                              animation: claimingProvider === stampId 
+                                ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' 
+                                : undefined
+                            }}
+                          >
+                            {claimingProvider === stampId ? (
+                              <>
+                                <Loader2 size={14} className="animate-spin" />
+                                Claiming Points...
+                              </>
+                            ) : (
+                              <>
+                                <Coins size={14} className="group-hover:rotate-12 transition-transform" />
+                                Claim Points
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                     <button
-                      onClick={() => handleStartVerification(stampId)}
-                      disabled={isVerifying || connectingWallet === stampId || isConnected}
-                      className={`px-4 py-2 font-mono uppercase text-sm transition-colors ${
-                        isConnected
+                      onClick={() => {
+                        // Disable EVM wallet verification
+                        if (stampId === 'ethereum' || stampId === 'eth_wallet') {
+                          return;
+                        }
+                        handleStartVerification(stampId);
+                      }}
+                      disabled={
+                        isVerifying === stampId || 
+                        connectingWallet === stampId || 
+                        isConnected ||
+                        successModalProvider === stampId ||
+                        (stampId === 'ethereum' || stampId === 'eth_wallet')
+                      }
+                      className={`px-4 py-2 font-mono uppercase text-sm transition-all duration-300 relative overflow-hidden ${
+                        (stampId === 'ethereum' || stampId === 'eth_wallet')
+                          ? 'bg-neutral-900 text-neutral-500 border border-neutral-800 cursor-not-allowed'
+                          : isConnected
                           ? 'bg-green-950 text-green-400 border border-green-800 cursor-not-allowed'
-                          : isVerifying || connectingWallet === stampId
+                          : isVerifying === stampId || connectingWallet === stampId
                           ? 'bg-neutral-800 text-neutral-400 cursor-not-allowed'
-                          : 'bg-white text-black hover:bg-neutral-100'
+                          : 'bg-white text-black hover:bg-neutral-100 hover:scale-105 active:scale-95'
                       }`}
+                      style={{
+                        animation: isVerifying === stampId || connectingWallet === stampId 
+                          ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' 
+                          : undefined
+                      }}
                     >
-                      {connectingWallet === stampId ? (
+                      {(stampId === 'ethereum' || stampId === 'eth_wallet') ? (
+                        <>
+                          <Clock size={14} className="inline mr-2" />
+                          Coming Soon
+                        </>
+                      ) : connectingWallet === stampId ? (
                         <>
                           <Loader2 size={14} className="inline animate-spin mr-2" />
                           Connecting Wallet...
                         </>
-                      ) : isVerifying ? (
+                      ) : isVerifying === stampId ? (
                         <>
                           <Loader2 size={14} className="inline animate-spin mr-2" />
                           Verifying...
                         </>
                       ) : isConnected ? (
-                        `✓ Verified (${verification.score} pts)`
+                        `вњ“ Verified (${verification.score} pts)`
                       ) : (
                         'Start Verification'
                       )}
@@ -324,14 +610,77 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
         </div>
       </div>
 
-      {/* Wallet Required Modal */}
+      {/* Success modal: "Connected successfully" + Claim points button (no auto-claim) */}
+      {successModalProvider && (() => {
+        const res = verificationResults[successModalProvider];
+        const name = successModalProvider === 'discord' ? 'Discord' : successModalProvider === 'telegram' ? 'Telegram' : 'Solana';
+        return (
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
+            onClick={() => setSuccessModalProvider(null)}
+          >
+            <div
+              className="bg-neutral-900 border border-neutral-700 rounded-lg max-w-md w-full p-8 relative shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setSuccessModalProvider(null)}
+                className="absolute top-4 right-4 text-neutral-400 hover:text-white transition-colors"
+              >
+                <X size={22} />
+              </button>
+              <div className="text-center pt-2">
+                <div className="mb-4">
+                  <Check size={56} className="text-green-500 mx-auto" />
+                </div>
+                <h2 className="text-xl font-mono font-bold text-white uppercase mb-1">
+                  {name} connected successfully
+                </h2>
+                <p className="text-neutral-400 font-mono text-sm mb-6">
+                  Score: <span className="text-white font-semibold">{res?.score ?? 0}</span> pts
+                </p>
+                <p className="text-neutral-500 font-mono text-xs mb-6">
+                  Claim points to add them to your wallet on-chain.
+                </p>
+                <button
+                  onClick={async () => {
+                    if (!successModalProvider || !res) return;
+                    try {
+                      await handleClaimPoints(successModalProvider, true);
+                      setSuccessModalProvider(null);
+                    } catch {
+                      // keep modal open so user can retry
+                    }
+                  }}
+                  disabled={claimingProvider === successModalProvider || initContractInProgress || !publicKey || !res}
+                  className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-white text-black font-mono uppercase text-sm font-semibold hover:bg-neutral-100 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed"
+                >
+                  {claimingProvider === successModalProvider ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      Claiming...
+                    </>
+                  ) : (
+                    <>
+                      <Coins size={18} />
+                      Claim points
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {showWalletRequiredModal && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md transition-opacity duration-300"
+          style={{ animation: 'fadeIn 0.3s ease-in' }}
           onClick={() => setShowWalletRequiredModal(false)}
         >
           <div 
-            className="bg-black border border-neutral-700 max-w-md w-full p-8 relative shadow-2xl"
+            className="bg-black border border-neutral-700 max-w-md w-full p-8 relative shadow-2xl transition-all duration-300"
             onClick={(e) => e.stopPropagation()}
             style={{ animation: 'zoomIn 0.3s ease-out' }}
           >
@@ -374,7 +723,7 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
 
               <button
                 onClick={() => setShowWalletRequiredModal(false)}
-                className="w-full px-6 py-3 bg-white text-black font-mono uppercase text-sm hover:bg-neutral-100 transition-colors"
+                className="w-full px-6 py-3 bg-white text-black font-mono uppercase text-sm hover:bg-neutral-100 transition-all duration-300 hover:scale-105 active:scale-95 relative overflow-hidden"
               >
                 Got it
               </button>
@@ -382,6 +731,169 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
           </div>
         </div>
       )}
+
+      {/* EVM WalletConnect Modal - DISABLED (Coming Soon) */}
+      {/* <WalletConnectModal
+        isOpen={showEVMWalletModal}
+        onClose={() => {
+          setShowEVMWalletModal(false);
+          setCurrentWalletId(null);
+        }}
+        onConnect={async (address, provider) => {
+          if (!currentWalletId) return;
+          
+          try {
+            setConnectingWallet('eth_wallet');
+            setIsLoading(true);
+
+            // Create SIWE message
+            const domain = window.location.host;
+            const origin = window.location.origin;
+            const statement = 'Verify wallet ownership for this app';
+            const message = `${domain} wants you to sign in with your Ethereum account:\n${address}\n\n${statement}\n\nURI: ${origin}\nVersion: 1\nChain ID: 1\nNonce: ${Date.now()}\nIssued At: ${new Date().toISOString()}`;
+
+            // Sign message
+            const ethersProvider = new (await import('ethers')).BrowserProvider(provider);
+            const signer = await ethersProvider.getSigner();
+            const signature = await signer.signMessage(message);
+
+            // Verify wallet (sync, no sessions)
+            console.log(`[Verification] Verifying EVM wallet: ${address}`);
+            const result = await verifyWallet('evm', address, signature, message, currentWalletId);
+
+            // Store result
+            setVerificationResults(prev => ({
+              ...prev,
+              'ethereum': { ...result, commitment: result.commitment || '' }
+            }));
+            console.log(`[Verification] Successfully verified EVM wallet. Score: ${result.score}, Commitment: ${result.commitment}`);
+
+            // Close modal
+            setShowEVMWalletModal(false);
+            setCurrentWalletId(null);
+            setConnectingWallet(null);
+            setIsLoading(false);
+          } catch (error: any) {
+            const errorMsg = error.message || 'Unknown error';
+            const isConnectionError = errorMsg.includes('connection refused') || 
+                                      errorMsg.includes('ERR_CONNECTION_REFUSED') ||
+                                      errorMsg.includes('Cannot connect to backend') ||
+                                      errorMsg.includes('Backend server');
+            
+            const errorDetails = {
+              walletAddress: address,
+              walletId: currentWalletId,
+              reason: errorMsg,
+              type: error?.constructor?.name || typeof error,
+              stack: error?.stack,
+              errorCode: error?.code,
+              errorName: error?.name,
+              isConnectionError,
+              backendUrl: import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001',
+              possibleCauses: isConnectionError ? [
+                'Backend server is not running',
+                'Backend server is not accessible',
+                'Network connectivity issues'
+              ] : undefined
+            };
+            console.error(`[Verification] Failed to verify EVM wallet. Reason: ${errorMsg}`, errorDetails);
+            
+            const userMessage = isConnectionError 
+              ? `Cannot connect to backend server. Please ensure the backend server is running on ${errorDetails.backendUrl}`
+              : errorMsg;
+            
+            alert(userMessage);
+            setConnectingWallet(null);
+            setIsLoading(false);
+          }
+        }}
+        chainId={1}
+      /> */}
+
+      {/* Solana Wallet Modal */}
+      <SolanaWalletModal
+        isOpen={showSolanaWalletModal}
+        onClose={() => {
+          setShowSolanaWalletModal(false);
+          setCurrentWalletId(null);
+        }}
+        onConnect={async (address, provider) => {
+          if (!currentWalletId) return;
+          
+          try {
+            setConnectingWallet('solana');
+            setIsLoading(true);
+
+            // Create SIWE-like message
+            const domain = window.location.host;
+            const origin = window.location.origin;
+            const statement = 'Verify wallet ownership for this app';
+            const message = `${domain} wants you to sign in with your Solana account:\n${address}\n\n${statement}\n\nURI: ${origin}\nVersion: 1\nNonce: ${Date.now()}\nIssued At: ${new Date().toISOString()}`;
+
+            // Sign message
+            const messageBytes = new TextEncoder().encode(message);
+            const signedMessage = await provider.signMessage(messageBytes, 'utf8');
+            const signature = Array.from(signedMessage.signature)
+              .map(b => b.toString(16).padStart(2, '0'))
+              .join('');
+
+            // Verify wallet (sync, no sessions)
+            console.log(`[Verification] Verifying Solana wallet: ${address}`);
+            const result = await verifyWallet('solana', address, signature, message, currentWalletId);
+
+            setVerificationResults(prev => ({
+              ...prev,
+              'solana': { ...result, commitment: result.commitment || '' }
+            }));
+            saveVerificationResult('solana', {
+              score: result.score,
+              criteria: result.criteria || [],
+              metadataHash: result.commitment || ''
+            });
+            console.log(`[Verification] Successfully verified Solana wallet. Score: ${result.score}, Commitment: ${result.commitment}`);
+
+            setShowSolanaWalletModal(false);
+            setCurrentWalletId(null);
+            setConnectingWallet(null);
+            setIsLoading(false);
+
+            const setupOk = await ensureClaimSetup();
+            if (setupOk) setSuccessModalProvider('solana');
+          } catch (error: any) {
+            const errorMsg = error.message || 'Unknown error';
+            const isConnectionError = errorMsg.includes('connection refused') || 
+                                      errorMsg.includes('ERR_CONNECTION_REFUSED') ||
+                                      errorMsg.includes('Cannot connect to backend') ||
+                                      errorMsg.includes('Backend server');
+            
+            const errorDetails = {
+              walletAddress: address,
+              walletId: currentWalletId,
+              reason: errorMsg,
+              type: error?.constructor?.name || typeof error,
+              stack: error?.stack,
+              errorCode: error?.code,
+              errorName: error?.name,
+              isConnectionError,
+              backendUrl: import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001',
+              possibleCauses: isConnectionError ? [
+                'Backend server is not running',
+                'Backend server is not accessible',
+                'Network connectivity issues'
+              ] : undefined
+            };
+            console.error(`[Verification] Failed to verify Solana wallet. Reason: ${errorMsg}`, errorDetails);
+            
+            const userMessage = isConnectionError 
+              ? `Cannot connect to backend server. Please ensure the backend server is running on ${errorDetails.backendUrl}`
+              : errorMsg;
+            
+            alert(userMessage);
+            setConnectingWallet(null);
+            setIsLoading(false);
+          }
+        }}
+      />
     </div>
   );
 };

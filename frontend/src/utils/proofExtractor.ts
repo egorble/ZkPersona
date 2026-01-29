@@ -1,6 +1,6 @@
 // Proof extractor from transactions
 
-import { fetchTransactionDetails } from "./explorerAPI";
+import { fetchTransactionDetailsFromAnyExplorer } from "./explorerAPI";
 
 /**
  * Transaction execution result from Aleo
@@ -22,7 +22,7 @@ export async function extractProofFromTransaction(
 ): Promise<{ proof: string; nullifier: string } | null> {
     try {
         // Fetch transaction details from explorer
-        const txDetails = await fetchTransactionDetails(transactionId);
+        const txDetails = await fetchTransactionDetailsFromAnyExplorer(transactionId);
         
         if (!txDetails) {
             console.error("[ProofExtractor] Transaction not found:", transactionId);
@@ -32,7 +32,7 @@ export async function extractProofFromTransaction(
         console.warn("[ProofExtractor] TODO: Parse actual transaction structure");
         
         return {
-            proof: txDetails.transactionId || "",
+            proof: txDetails.txId || "",
             nullifier: "",
         };
     } catch (error) {

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Loader2, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
 import { useWallet } from '@demox-labs/aleo-wallet-adapter-react';
 import { WalletRequiredModal } from './WalletRequiredModal';
-import { fetchTransactionDetails, getFunctionDisplayName } from '../utils/explorerAPI';
+import { fetchTransactionDetailsFromAnyExplorer, getFunctionDisplayName } from '../utils/explorerAPI';
 
 // Add keyframes for animations
 const style = document.createElement('style');
@@ -72,17 +72,16 @@ export const TransactionStatus: React.FC<TransactionStatusProps> = ({
 
   const [isClosing, setIsClosing] = useState(false);
 
-  // Fetch transaction details to get function name
+  // Fetch transaction details to get function name (try Provable, then Aleo testnet3)
   useEffect(() => {
     if (txId && !propFunctionName) {
-      fetchTransactionDetails(txId)
+      fetchTransactionDetailsFromAnyExplorer(txId)
         .then(txDetails => {
           if (txDetails?.function || txDetails?.functionName) {
             setTransactionFunctionName(txDetails.function || txDetails.functionName || null);
           }
         })
-        .catch(error => {
-          console.debug('[TransactionStatus] Could not fetch transaction details:', error);
+        .catch(() => {
           // Silent fail - not critical
         });
     } else if (propFunctionName) {
@@ -125,13 +124,12 @@ export const TransactionStatus: React.FC<TransactionStatusProps> = ({
     }
   }, [status, onConfirm, onError]);
 
-  // Format explorer URL - handle different ID formats
-  const explorerUrl = txId 
-    ? (txId.startsWith('au1') || txId.startsWith('at1'))
-      ? `https://testnet.aleoscan.io/transition?id=${txId}`
-      : txId.includes('-')
-      ? `https://testnet.aleoscan.io/tx/${txId}` // UUID format
-      : `https://testnet.aleoscan.io/tx/${txId}` // Other formats
+  // Provable testnet (we deploy there) and Aleo testnet3 (Leo Wallet may use either)
+  const provableUrl = txId
+    ? `https://testnet.explorer.provable.com/transaction/${txId}`
+    : null;
+  const aleoExplorerUrl = txId
+    ? `https://explorer.aleo.org/testnet3/transaction/${txId}`
     : null;
 
   return (
@@ -189,15 +187,26 @@ export const TransactionStatus: React.FC<TransactionStatusProps> = ({
                 Your transaction has been signed and submitted to the blockchain
               </p>
               {txId && (
-                <a
-                  href={explorerUrl || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-white hover:text-neutral-300 flex items-center gap-2 font-mono underline"
-                >
-                  View on Explorer
-                  <ExternalLink size={14} />
-                </a>
+                <div className="flex flex-col gap-2">
+                  <a
+                    href={provableUrl || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-white hover:text-neutral-300 flex items-center gap-2 font-mono underline"
+                  >
+                    View on Provable Explorer
+                    <ExternalLink size={14} />
+                  </a>
+                  <a
+                    href={aleoExplorerUrl || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-neutral-400 hover:text-neutral-300 flex items-center gap-2 font-mono underline"
+                  >
+                    View on Aleo Explorer (testnet3)
+                    <ExternalLink size={14} />
+                  </a>
+                </div>
               )}
               <p className="text-xs text-neutral-500 font-mono mt-4">
                 Closing automatically...
@@ -222,20 +231,31 @@ export const TransactionStatus: React.FC<TransactionStatusProps> = ({
                 </div>
               )}
               <p className="text-neutral-400 text-sm font-mono mb-4">
-                {transactionFunctionName === 'create_passport' 
-                  ? 'Your passport has been created successfully'
+                {transactionFunctionName === 'claim_points' 
+                  ? 'Claim points setup complete. You can now claim.'
                   : 'Transaction confirmed successfully'}
               </p>
               {txId && (
-                <a
-                  href={explorerUrl || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-white hover:text-neutral-300 flex items-center gap-2 font-mono underline"
-                >
-                  View on Explorer
-                  <ExternalLink size={14} />
-                </a>
+                <div className="flex flex-col gap-2">
+                  <a
+                    href={provableUrl || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-white hover:text-neutral-300 flex items-center gap-2 font-mono underline"
+                  >
+                    View on Provable Explorer
+                    <ExternalLink size={14} />
+                  </a>
+                  <a
+                    href={aleoExplorerUrl || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-neutral-400 hover:text-neutral-300 flex items-center gap-2 font-mono underline"
+                  >
+                    View on Aleo Explorer (testnet3)
+                    <ExternalLink size={14} />
+                  </a>
+                </div>
               )}
             </>
           )}
@@ -252,15 +272,26 @@ export const TransactionStatus: React.FC<TransactionStatusProps> = ({
                 The transaction could not be completed. Please try again.
               </p>
               {txId && (
-                <a
-                  href={explorerUrl || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-white hover:text-neutral-300 flex items-center gap-2 font-mono underline"
-                >
-                  View on Explorer
-                  <ExternalLink size={14} />
-                </a>
+                <div className="flex flex-col gap-2">
+                  <a
+                    href={provableUrl || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-white hover:text-neutral-300 flex items-center gap-2 font-mono underline"
+                  >
+                    View on Provable Explorer
+                    <ExternalLink size={14} />
+                  </a>
+                  <a
+                    href={aleoExplorerUrl || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-neutral-400 hover:text-neutral-300 flex items-center gap-2 font-mono underline"
+                  >
+                    View on Aleo Explorer (testnet3)
+                    <ExternalLink size={14} />
+                  </a>
+                </div>
               )}
             </>
           )}
