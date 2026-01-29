@@ -149,8 +149,8 @@ Response:
   "totalScore": 50,
   "verifiedCount": 2,
   "breakdown": {
-    "google": { "score": 15, "maxScore": 15, "verifiedAt": "2024-01-01T00:00:00Z" },
-    "evm": { "score": 35, "maxScore": 35, "verifiedAt": "2024-01-01T00:00:00Z" }
+    "google": { "score": 15, "maxScore": 15, "verifiedAt": "2026-01-01T00:00:00Z" },
+    "evm": { "score": 35, "maxScore": 35, "verifiedAt": "2026-01-01T00:00:00Z" }
   }
 }
 ```

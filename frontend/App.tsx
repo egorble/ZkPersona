@@ -16,6 +16,7 @@ import { TransactionStatus as TransactionStatusComponent, TransactionStatusType 
 import { VerificationInstructions } from './src/components/VerificationInstructions';
 import { WalletRequiredModal } from './src/components/WalletRequiredModal';
 import { useVerification } from './src/hooks/useVerification';
+import { GlobalLoader } from './src/components/GlobalLoader';
 import { OAuthCallback } from './src/pages/OAuthCallback';
 import { VerifyCallback } from './src/pages/VerifyCallback';
 import { VerifyEVM } from './src/pages/VerifyEVM';
@@ -54,15 +55,6 @@ import {
 // --- Static Data (fallback stamps) ---
 const INITIAL_STAMPS: Stamp[] = [
   {
-    id: 'eth_wallet',
-    title: 'ETH Transaction',
-    description: 'Transaction history on the Ethereum network. Minimum 0.01 ETH balance required.',
-    icon: <Bitcoin size={24} />,
-    scoreWeight: 25,
-    status: StampStatus.LOCKED,
-    provider: 'ethereum'
-  },
-  {
     id: 'discord',
     title: 'Discord',
     description: 'Verify genuine Discord engagement and Sybil resistance. Bonus points for Aleo official server membership.',
@@ -81,22 +73,23 @@ const INITIAL_STAMPS: Stamp[] = [
     provider: 'telegram'
   },
   {
-    id: 'tiktok',
-    title: 'TikTok',
-    description: 'Verify your TikTok account and engagement.',
-    icon: <Video size={24} />,
-    scoreWeight: 10,
-    status: StampStatus.LOCKED,
-    provider: 'tiktok'
-  },
-  {
     id: 'solana',
     title: 'Solana Wallet',
-    description: 'Verify your Solana wallet with balance and transaction history. Minimum 0.1 SOL balance required.',
+    description: 'Verify your Solana wallet with balance and transaction history. Minimum 0.01 SOL balance required.',
     icon: <Wallet size={24} />,
     scoreWeight: 25,
     status: StampStatus.LOCKED,
     provider: 'solana'
+  },
+  {
+    id: 'eth_wallet',
+    title: 'EVM Wallet',
+    description: 'Coming soon. EVM wallet verification will be available in the next update.',
+    icon: <Wallet size={24} />,
+    scoreWeight: 25,
+    status: StampStatus.LOCKED,
+    provider: 'ethereum',
+    comingSoon: true
   }
 ];
 
@@ -134,14 +127,14 @@ const Header = ({
         
         {isConnected ? (
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-neutral-900 px-4 py-2 rounded-full border border-neutral-800">
+            <div className="flex items-center gap-2 bg-neutral-900 px-4 py-2 rounded-full border border-neutral-800 transition-all duration-300 hover:scale-105">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
             <span className="font-mono text-xs text-neutral-300">{address?.slice(0, 6)}...{address?.slice(-4)}</span>
             </div>
             {onDisconnect && (
               <button
                 onClick={onDisconnect}
-                className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 hover:border-neutral-600 text-neutral-300 hover:text-white font-mono text-xs uppercase transition-colors rounded-full"
+                className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 hover:border-neutral-600 text-neutral-300 hover:text-white font-mono text-xs uppercase transition-all duration-300 rounded-full hover:scale-105 active:scale-95 relative overflow-hidden"
                 title="Disconnect wallet"
               >
                 <X size={14} className="inline mr-1" />
@@ -150,7 +143,7 @@ const Header = ({
             )}
           </div>
         ) : (
-          <Button size="sm" onClick={onConnect}>
+          <Button size="sm" onClick={onConnect} className="hover:scale-105 active:scale-95">
             <Wallet className="w-4 h-4 mr-2" />
             Connect Wallet
           </Button>
@@ -217,11 +210,11 @@ const LandingPage = ({ onEnterApp }: { onEnterApp: () => void }) => (
         </p>
         
         <div className="flex flex-col md:flex-row gap-4 justify-center items-center mb-20">
-          <Button size="lg" onClick={onEnterApp} className="group min-w-[200px]">
+          <Button size="lg" onClick={onEnterApp} className="group min-w-[200px] hover:scale-105 active:scale-95">
             Launch App 
             <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Button>
-          <Button size="lg" variant="outline" className="min-w-[200px]">
+          <Button size="lg" variant="outline" className="min-w-[200px] hover:scale-105 active:scale-95">
             Read Whitepaper
           </Button>
         </div>
@@ -299,8 +292,8 @@ const LandingPage = ({ onEnterApp }: { onEnterApp: () => void }) => (
             />
             <StepCard 
               number="03" 
-              title="Mint Passport" 
-              text="Generate a privacy-preserving Soulbound Token (SBT) that acts as your universal pass." 
+              title="Claim Points" 
+              text="Verify identities, claim points, and add them to your wallet on-chain." 
             />
           </div>
         </div>
@@ -355,7 +348,7 @@ const LandingPage = ({ onEnterApp }: { onEnterApp: () => void }) => (
       <p className="text-neutral-400 max-w-xl mb-10 text-lg">
         Join the network of verified humans. Secure your spot in the future of digital identity today.
       </p>
-      <Button size="lg" onClick={onEnterApp}>
+      <Button size="lg" onClick={onEnterApp} className="hover:scale-105 active:scale-95">
         Launch Application
       </Button>
     </div>
@@ -369,11 +362,10 @@ const LandingPage = ({ onEnterApp }: { onEnterApp: () => void }) => (
         <div className="flex gap-8 text-sm text-neutral-500 font-mono">
           <a href="#" className="hover:text-white transition-colors">Discord</a>
           <a href="#" className="hover:text-white transition-colors">Telegram</a>
-          <a href="#" className="hover:text-white transition-colors">TikTok</a>
           <a href="#" className="hover:text-white transition-colors">Mirror</a>
         </div>
         <div className="text-neutral-600 text-xs font-mono">
-          © 2024 VERIF PROTOCOL LABS
+          © 2026 VERIF PROTOCOL LABS
         </div>
       </div>
     </footer>
@@ -385,7 +377,7 @@ type DashboardTab = 'stamps' | 'leaderboard' | 'ecosystem';
 const Dashboard = ({ user, onVerifyStamp }: { user: UserState; onVerifyStamp: (id: string, success: boolean) => void }) => {
   const { publicKey } = useWallet();
   const { hasPassport, createPassport, loading: passportLoading, checkPassport } = usePassport();
-  const { stamps: aleoStamps, userStamps, loading: stampsLoading } = useStamps();
+  const { stamps: aleoStamps, userStamps = [], loading: stampsLoading } = useStamps();
   const { verifications, getTotalScore } = useVerification(publicKey || undefined);
   const [stamps, setStamps] = useState<Stamp[]>(INITIAL_STAMPS);
   const [activeTab, setActiveTab] = useState<DashboardTab>('stamps');
@@ -397,31 +389,28 @@ const Dashboard = ({ user, onVerifyStamp }: { user: UserState; onVerifyStamp: (i
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [transactionStatus, setTransactionStatus] = useState<TxStatus>('waiting');
   const [transactionFunctionName, setTransactionFunctionName] = useState<string | undefined>(undefined);
+  const [isPageLoading, setIsPageLoading] = useState(false);
 
-  // Map Aleo stamps to UI stamps
+  // Map Aleo stamps to UI stamps (only update when content actually changes to avoid loop)
   useEffect(() => {
+    let nextStamps: Stamp[];
     if (aleoStamps.length > 0) {
-      const mappedStamps: Stamp[] = aleoStamps.map((aleoStamp, index) => {
-        // Map stamp_id to provider/icon
-        const iconMap = [
-          <Globe size={24} />,
-          <Twitter size={24} />,
-          <Bitcoin size={24} />,
-          <Github size={24} />,
-          <ScanFace size={24} />,
-          <BrainCircuit size={24} />,
-        ];
-        const providerMap: Array<'ethereum' | 'discord' | 'telegram' | 'tiktok'> = [
-          'ethereum', 'discord', 'telegram', 'tiktok'
-        ];
-        
+      const iconMap = [
+        <Globe size={24} />,
+        <Twitter size={24} />,
+        <Bitcoin size={24} />,
+        <Github size={24} />,
+        <ScanFace size={24} />,
+        <BrainCircuit size={24} />,
+      ];
+      const providerMap: Array<'ethereum' | 'discord' | 'telegram' | 'solana'> = [
+        'ethereum', 'discord', 'telegram', 'solana'
+      ];
+      nextStamps = aleoStamps.map((aleoStamp, index) => {
         const isEarned = userStamps.includes(aleoStamp.stamp_id);
         const provider = providerMap[index % providerMap.length] || 'discord';
-        
-        // Check if verified via verification system
         const verification = verifications[provider] || verifications[aleoStamp.stamp_id];
         const isVerified = isEarned || (verification?.verified && verification.status === 'connected');
-        
         return {
           id: `stamp_${aleoStamp.stamp_id}`,
           title: aleoStamp.name,
@@ -438,18 +427,21 @@ const Dashboard = ({ user, onVerifyStamp }: { user: UserState; onVerifyStamp: (i
           earned: isEarned,
         };
       });
-      setStamps(mappedStamps);
     } else {
-      // Use initial stamps if no Aleo stamps - update based on verifications
-      setStamps(INITIAL_STAMPS.map(stamp => {
+      nextStamps = INITIAL_STAMPS.map(stamp => {
         const verification = verifications[stamp.provider] || verifications[stamp.id];
         const isVerified = verification?.verified && verification.status === 'connected';
         return {
-        ...stamp,
+          ...stamp,
           status: isVerified ? StampStatus.VERIFIED : (user.stamps[stamp.id] || StampStatus.LOCKED)
         };
-      }));
+      });
     }
+    setStamps(prev => {
+      if (prev.length !== nextStamps.length) return nextStamps;
+      const same = prev.every((s, i) => s.id === nextStamps[i].id && s.status === nextStamps[i].status);
+      return same ? prev : nextStamps;
+    });
   }, [aleoStamps, userStamps, user.stamps, verifications]);
 
   // Update user score from verifications
@@ -461,30 +453,27 @@ const Dashboard = ({ user, onVerifyStamp }: { user: UserState; onVerifyStamp: (i
     }
   }, [verifications, getTotalScore, onVerifyStamp]);
   
-  // Listen for verification updates and refresh state
+  // Listen for verification updates and refresh state (debounced to avoid storm)
   useEffect(() => {
+    let t: ReturnType<typeof setTimeout>;
     const handleVerificationUpdate = () => {
-      console.log('[App] 🔔 Verification update event received, refreshing state...');
-      // Force re-check passport
-      if (checkPassport) {
-        checkPassport();
-      }
-      // Trigger state update by reloading verifications from localStorage
-      window.dispatchEvent(new Event('storage'));
+      clearTimeout(t);
+      t = setTimeout(() => {
+        if (checkPassport) checkPassport();
+      }, 500);
     };
 
     window.addEventListener('verification-updated', handleVerificationUpdate);
-    return () => window.removeEventListener('verification-updated', handleVerificationUpdate);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('verification-updated', handleVerificationUpdate);
+    };
   }, [checkPassport]);
   
-  // Re-check passport after verification to update UI
   useEffect(() => {
     if (publicKey && checkPassport) {
-      // Small delay to ensure blockchain state is updated
-      const timer = setTimeout(() => {
-        checkPassport();
-      }, 2000);
-      return () => clearTimeout(timer);
+      const t = setTimeout(() => { checkPassport(); }, 2000);
+      return () => clearTimeout(t);
     }
   }, [verifications, publicKey, checkPassport]);
 
@@ -501,11 +490,9 @@ const Dashboard = ({ user, onVerifyStamp }: { user: UserState; onVerifyStamp: (i
     scoreWeight: stamp.scoreWeight
   }));
 
-  // Handle stamp selection confirmation - no passport creation needed
   const handleStampsSelected = async (selectedIds: string[]) => {
     setSelectedStamps(selectedIds);
     setShowStampSelection(false);
-    // Open verification instructions directly without creating passport
     setShowVerificationInstructions(true);
   };
 
@@ -521,11 +508,13 @@ const Dashboard = ({ user, onVerifyStamp }: { user: UserState; onVerifyStamp: (i
     setSelectedStamps([]);
   };
 
-  // No passport creation required - user can start verifications immediately
+  if (stampsLoading || passportLoading) {
+    return <GlobalLoader fullScreen message="Loading..." />;
+  }
 
   return (
     <>
-      <div className="min-h-screen pt-32 pb-20 px-6 max-w-7xl mx-auto">
+      <div className="min-h-screen pt-32 pb-20 px-6 max-w-7xl mx-auto animate-slide-in">
       
       {/* Stats Header */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8 mb-16">
@@ -535,27 +524,27 @@ const Dashboard = ({ user, onVerifyStamp }: { user: UserState; onVerifyStamp: (i
           <div className="flex gap-4 mt-4">
             <button 
               onClick={() => setActiveTab('stamps')}
-              className={`flex items-center gap-2 px-6 py-3 font-mono text-xs uppercase tracking-widest border transition-all ${
-                activeTab === 'stamps' ? 'bg-white text-black border-white' : 'text-neutral-500 border-neutral-800 hover:border-neutral-700'
+              className={`flex items-center gap-2 px-6 py-3 font-mono text-xs uppercase tracking-widest border transition-all duration-300 relative overflow-hidden ${
+                activeTab === 'stamps' ? 'bg-white text-black border-white' : 'text-neutral-500 border-neutral-800 hover:border-neutral-700 hover:scale-105 active:scale-95'
               }`}
             >
-              <LayoutDashboard size={14} /> My Stamps
+              <LayoutDashboard size={14} className="transition-transform group-hover:rotate-12" /> My Stamps
             </button>
             <button 
               onClick={() => setActiveTab('leaderboard')}
-              className={`flex items-center gap-2 px-6 py-3 font-mono text-xs uppercase tracking-widest border transition-all ${
-                activeTab === 'leaderboard' ? 'bg-white text-black border-white' : 'text-neutral-500 border-neutral-800 hover:border-neutral-700'
+              className={`flex items-center gap-2 px-6 py-3 font-mono text-xs uppercase tracking-widest border transition-all duration-300 relative overflow-hidden ${
+                activeTab === 'leaderboard' ? 'bg-white text-black border-white' : 'text-neutral-500 border-neutral-800 hover:border-neutral-700 hover:scale-105 active:scale-95'
               }`}
             >
-              <Trophy size={14} /> Leaderboard
+              <Trophy size={14} className="transition-transform group-hover:rotate-12" /> Leaderboard
             </button>
             <button 
               onClick={() => setActiveTab('ecosystem')}
-              className={`flex items-center gap-2 px-6 py-3 font-mono text-xs uppercase tracking-widest border transition-all ${
-                activeTab === 'ecosystem' ? 'bg-white text-black border-white' : 'text-neutral-500 border-neutral-800 hover:border-neutral-700'
+              className={`flex items-center gap-2 px-6 py-3 font-mono text-xs uppercase tracking-widest border transition-all duration-300 relative overflow-hidden ${
+                activeTab === 'ecosystem' ? 'bg-white text-black border-white' : 'text-neutral-500 border-neutral-800 hover:border-neutral-700 hover:scale-105 active:scale-95'
               }`}
             >
-              <AppWindow size={14} /> Integrations
+              <AppWindow size={14} className="transition-transform group-hover:rotate-12" /> Integrations
             </button>
           </div>
         </div>
@@ -567,12 +556,15 @@ const Dashboard = ({ user, onVerifyStamp }: { user: UserState; onVerifyStamp: (i
           </div>
           <div>
             <div className={`text-6xl font-bold mb-2 font-mono ${scoreColor}`}>
-              {user.score.toFixed(1)}
+              {publicKey ? user.score.toFixed(1) : '—'}
             </div>
+            <p className="text-neutral-500 text-xs font-mono uppercase mb-2">
+              {!publicKey && 'Connect wallet to see score'}
+            </p>
             <div className="w-full h-1 bg-neutral-900 mt-4 overflow-hidden">
               <div 
                 className="h-full bg-white transition-all duration-1000 ease-out" 
-                style={{ width: `${progressWidth}%` }} 
+                style={{ width: `${publicKey ? progressWidth : 0}%` }} 
               />
             </div>
           </div>
@@ -586,50 +578,50 @@ const Dashboard = ({ user, onVerifyStamp }: { user: UserState; onVerifyStamp: (i
             <div className="mb-6 flex flex-wrap gap-3">
               <button
                 onClick={() => setSelectedCategory('all')}
-                className={`px-4 py-2 font-mono uppercase text-sm transition-all ${
+                className={`px-4 py-2 font-mono uppercase text-sm transition-all duration-300 relative overflow-hidden ${
                   (selectedCategory || 'all') === 'all'
                     ? 'bg-white text-black'
-                    : 'bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
+                    : 'bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700 hover:scale-105 active:scale-95'
                 }`}
               >
                 All Platforms
               </button>
               <button
                 onClick={() => setSelectedCategory('social')}
-                className={`px-4 py-2 font-mono uppercase text-sm transition-all ${
+                className={`px-4 py-2 font-mono uppercase text-sm transition-all duration-300 relative overflow-hidden ${
                   (selectedCategory || 'all') === 'social'
                     ? 'bg-white text-black'
-                    : 'bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
+                    : 'bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700 hover:scale-105 active:scale-95'
                 }`}
               >
                 Social Networks
               </button>
               <button
                 onClick={() => setSelectedCategory('onchain')}
-                className={`px-4 py-2 font-mono uppercase text-sm transition-all ${
+                className={`px-4 py-2 font-mono uppercase text-sm transition-all duration-300 relative overflow-hidden ${
                   (selectedCategory || 'all') === 'onchain'
                     ? 'bg-white text-black'
-                    : 'bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
+                    : 'bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700 hover:scale-105 active:scale-95'
                 }`}
               >
                 On-chain
               </button>
               <button
                 onClick={() => setSelectedCategory('other')}
-                className={`px-4 py-2 font-mono uppercase text-sm transition-all ${
+                className={`px-4 py-2 font-mono uppercase text-sm transition-all duration-300 relative overflow-hidden ${
                   (selectedCategory || 'all') === 'other'
                     ? 'bg-white text-black'
-                    : 'bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
+                    : 'bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700 hover:scale-105 active:scale-95'
                 }`}
               >
                 Other
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {stampsLoading ? (
-                <div className="col-span-full text-center py-12 text-neutral-400 font-mono">
-                  Loading stamps from blockchain...
+                <div className="col-span-full">
+                  <GlobalLoader message="Loading stamps from blockchain..." />
                 </div>
               ) : (
                 stamps
@@ -637,7 +629,7 @@ const Dashboard = ({ user, onVerifyStamp }: { user: UserState; onVerifyStamp: (i
                     const category = selectedCategory || 'all';
                     if (category === 'all') return true;
                     if (category === 'social') {
-                      return ['discord', 'telegram', 'tiktok'].includes(stamp.provider);
+                      return ['discord', 'telegram'].includes(stamp.provider);
                     }
                     if (category === 'onchain') {
                       return ['ethereum', 'eth_wallet', 'solana'].includes(stamp.provider);
@@ -647,18 +639,26 @@ const Dashboard = ({ user, onVerifyStamp }: { user: UserState; onVerifyStamp: (i
                     }
                     return true;
                   })
-                  .map((stamp) => (
-                    <StampCard 
-                      key={stamp.id} 
-                      stamp={stamp} 
-                      onVerify={onVerifyStamp}
-                      onOpenVerificationInstructions={(stampId) => {
-                        // Normalize stamp ID (eth_wallet -> ethereum)
-                        const normalizedId = stampId === 'eth_wallet' ? 'ethereum' : stampId;
-                        setSelectedStamps([normalizedId]);
-                        setShowVerificationInstructions(true);
+                  .map((stamp, index) => (
+                    <div 
+                      key={stamp.id}
+                      className="animate-slide-in"
+                      style={{ 
+                        animationDelay: `${index * 0.1}s`,
+                        animationFillMode: 'both'
                       }}
-                    />
+                    >
+                      <StampCard 
+                        stamp={stamp} 
+                        onVerify={onVerifyStamp}
+                        onOpenVerificationInstructions={(stampId) => {
+                          // Normalize stamp ID (eth_wallet -> ethereum)
+                          const normalizedId = stampId === 'eth_wallet' ? 'ethereum' : stampId;
+                          setSelectedStamps([normalizedId]);
+                          setShowVerificationInstructions(true);
+                        }}
+                      />
+                    </div>
                   ))
               )}
             </div>
@@ -677,7 +677,7 @@ const Dashboard = ({ user, onVerifyStamp }: { user: UserState; onVerifyStamp: (i
       {/* Footer Info */}
       <div className="mt-20 pt-10 border-t border-neutral-900 text-center">
         <p className="text-neutral-600 text-sm font-mono">
-          VERIF PROTOCOL &copy; 2024. BUILT ON ALEO. POWERED BY GEMINI.
+          VERIF PROTOCOL &copy; 2026. BUILT ON ALEO. POWERED BY GEMINI.
         </p>
       </div>
 
@@ -726,14 +726,19 @@ const AppContent = () => {
   });
   
   const { publicKey, connect, disconnect, wallet, connecting, select, wallets } = useWallet();
-  const { passport } = usePassport();
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [user, setUser] = useState<UserState>(() => {
-    // Load saved user state from localStorage
+    // Load saved user state from localStorage (never restore score — it's wallet-scoped)
     const saved = localStorage.getItem('user_state');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved) as UserState;
+        return {
+          ...parsed,
+          score: 0,
+          isConnected: false,
+          address: null
+        };
       } catch {
         // Fallback to default
       }
@@ -798,44 +803,35 @@ const AppContent = () => {
       setUser(prev => ({
         ...prev,
         isConnected: false,
-        address: null
+        address: null,
+        score: 0
       }));
     }
   }, [publicKey, wallet, view]);
 
   const { verifications, getTotalScore, refreshVerifications } = useVerification(publicKey || undefined);
 
-  // Update score from passport or verifications
   useEffect(() => {
-    const verificationScore = getTotalScore();
-    
-    if (passport && passport.humanity_score > 0) {
-      // Use passport score if available (from blockchain)
-      setUser(prev => ({
-        ...prev,
-        score: Math.max(passport.humanity_score, verificationScore)
-      }));
-    } else if (verificationScore > 0) {
-      // Use verification score if passport not yet on-chain
-      setUser(prev => ({
-        ...prev,
-        score: verificationScore
-      }));
-    }
-  }, [passport, verifications, getTotalScore]);
+    if (!publicKey) return;
+    const s = getTotalScore();
+    setUser(prev => ({ ...prev, score: s }));
+  }, [publicKey, verifications, getTotalScore]);
 
-  // Listen for verification updates and refresh verifications (without reloading page)
+  // Listen for verification updates and refresh verifications (debounced to avoid storm)
   useEffect(() => {
+    let t: ReturnType<typeof setTimeout>;
     const handleVerificationUpdate = () => {
-      console.log('[AppContent] 🔔 Verification update event received, refreshing verifications...');
-      // Refresh verifications from backend (this will update state without page reload)
-      if (refreshVerifications) {
-        refreshVerifications();
-      }
+      clearTimeout(t);
+      t = setTimeout(() => {
+        if (refreshVerifications) refreshVerifications();
+      }, 500);
     };
 
     window.addEventListener('verification-updated', handleVerificationUpdate);
-    return () => window.removeEventListener('verification-updated', handleVerificationUpdate);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('verification-updated', handleVerificationUpdate);
+    };
   }, [refreshVerifications]);
 
   // Listen for wallet modal open event from WalletRequiredModal
@@ -938,7 +934,8 @@ const AppContent = () => {
             setUser(prev => ({
               ...prev,
               isConnected: false,
-              address: null
+              address: null,
+              score: 0
             }));
             console.log('[App] ✅ Wallet disconnected');
           } catch (error) {
@@ -962,10 +959,12 @@ const AppContent = () => {
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md transition-opacity duration-300"
           style={{ animation: 'fadeIn 0.3s ease-in' }}
+          onClick={() => setShowWalletModal(false)}
         >
           <div 
             className="bg-black border border-neutral-700 max-w-md w-full p-8 relative shadow-2xl transition-all duration-300"
             style={{ animation: 'zoomIn 0.3s ease-out' }}
+            onClick={(e) => e.stopPropagation()}
           >
             <button 
               onClick={() => setShowWalletModal(false)} 
@@ -985,7 +984,12 @@ const AppContent = () => {
                   key={walletOption.adapter.name}
                   onClick={() => handleConnectWallet(walletOption.adapter.name)}
                   disabled={connecting}
-                  className="w-full p-4 border border-neutral-800 bg-surface hover:border-white transition-colors text-left flex items-center justify-between group"
+                  className="w-full p-4 border border-neutral-800 bg-surface hover:border-white transition-all duration-300 text-left flex items-center justify-between group hover:scale-105 active:scale-95 relative overflow-hidden"
+                  style={{
+                    animation: connecting && wallet?.adapter.name === walletOption.adapter.name 
+                      ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' 
+                      : undefined
+                  }}
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 border border-neutral-700 bg-neutral-900 flex items-center justify-center">
