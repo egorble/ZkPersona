@@ -16,6 +16,7 @@ import { startVerification, verifyWallet, VerificationResult } from '../utils/ba
 import { providerToPlatformId } from '../utils/platformMapping';
 import { PROGRAM_ID } from '../deployed_program';
 import { usePassportRecords } from '../hooks/usePassportRecords';
+import { fetchTransactionDetailsFromAnyExplorer } from '../utils/explorerAPI';
 import { usePassport } from '../hooks/usePassport';
 import { getAllStamps } from '../utils/aleoAPI';
 
@@ -35,7 +36,7 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
   const { publicKey, wallet } = useWallet();
   const adapter = wallet?.adapter as any;
   const network = WalletAdapterNetwork.TestnetBeta;
-  const { verifications, verifying, getVerification, saveVerificationResult } = useVerification(publicKey || undefined);
+  const { verifications, verifying, getVerification, saveVerificationResult, markProviderClaimed } = useVerification(publicKey || undefined);
   const { requestPassportRecords } = usePassportRecords();
   const { createPassport } = usePassport();
   const [connectingWallet, setConnectingWallet] = useState<string | null>(null);
@@ -317,7 +318,8 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
         );
       }
 
-      let commitment = result.commitment;
+      // Normalize commitment for Aleo: trim, no whitespace, must end with "field"
+      let commitment = String(result.commitment || '').trim().replace(/\s/g, '');
       if (!commitment.endsWith('field')) commitment = commitment + 'field';
       // Contract requires points to match stamp exactly; use stamp.points (default stamps set in initialize())
       const pointsU64 = `${stamp.points}u64`;
@@ -339,15 +341,41 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
       });
       console.log(`[Claim Points] Successfully claimed ${result.score} points for ${provider}. Transaction ID: ${txId}`);
 
+      // Verify tx used our program (when explorer-compatible tx id) before marking claimed
+      let shouldMarkClaimed = true;
+      if (typeof txId === 'string' && txId.startsWith('at')) {
+        try {
+          const details = await fetchTransactionDetailsFromAnyExplorer(txId);
+          const programOk = details?.program && String(details.program).toLowerCase().includes('zkpersona');
+          const fnOk = details?.functionName === 'claim_social_stamp';
+          if (details && (!programOk || !fnOk)) {
+            shouldMarkClaimed = false;
+            console.warn('[Claim Points] Tx may not use our program:', { program: details?.program, function: details?.functionName });
+          }
+        } catch {
+          /* still mark claimed if we can't verify */
+        }
+      }
+
+      if (shouldMarkClaimed) {
+        markProviderClaimed(provider, txId);
+      }
+
       const explorerUrl = `https://testnet.explorer.provable.com/transaction/${txId}`;
-      const msg = txId.startsWith("at")
+      const msg = txId.startsWith('at')
         ? `Points claimed!\n\nProvider: ${provider}\nPoints: ${result.score}\n\nTransaction: ${txId.slice(0, 12)}...\n\nOpen in explorer: ${explorerUrl}`
         : `Points claimed!\n\nProvider: ${provider}\nPoints: ${result.score}\n\nIf the transaction doesn't appear in the explorer, open Leo Wallet → Transaction history and open the transaction there to get the real tx id.`;
-      alert(msg);
-      if (txId.startsWith("at")) {
-        window.open(explorerUrl, "_blank");
+      if (!shouldMarkClaimed) {
+        alert(
+          'Transaction was sent but it may not have used the zkPersona contract. Please check the transaction in the explorer. You can try claiming again once confirmed.'
+        );
+      } else {
+        alert(msg);
       }
-      
+      if (typeof txId === 'string' && txId.startsWith('at')) {
+        window.open(explorerUrl, '_blank');
+      }
+
       setVerificationResults(prev => {
         const next = { ...prev };
         delete next[provider];
@@ -416,13 +444,13 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
         <div className="flex-1 overflow-y-auto p-6">
           <div className="space-y-8">
             {(() => {
-              // Show stamps that need verification OR verified with commitment (Telegram/Solana/Discord) so user can Claim
+              // Show stamps that need verification OR verified with commitment (so user can Claim or see Already claimed)
               const unverifiedStamps = selectedStamps.filter((stampId) => {
                 const verificationId = stampId === 'eth_wallet' ? 'ethereum' : stampId;
                 const verification = getVerification(verificationId);
                 const isConnected = verification?.verified && verification.status === 'connected';
-                const canClaim = verification?.commitment && ['twitter', 'solana', 'discord'].includes(stampId);
-                return !isConnected || canClaim;
+                const hasCommitment = verification?.commitment && ['twitter', 'solana', 'discord'].includes(stampId);
+                return !isConnected || hasCommitment;
               });
 
               if (unverifiedStamps.length === 0 && selectedStamps.length > 0) {
@@ -507,26 +535,35 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
                           )}
                           {['twitter', 'solana', 'discord'].includes(stampId) && (verification?.commitment || verificationResults[stampId]?.commitment) && (
                             <>
-                              <div className="mt-3 p-2 bg-green-900/20 border border-green-700/30 rounded text-xs text-green-300 font-mono">
-                                Claim points to add them to your wallet on-chain.
-                              </div>
-                              <button
-                                onClick={() => handleClaimPoints(stampId)}
-                                disabled={claimingProvider === stampId || !publicKey}
-                                className="mt-3 w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-neutral-800 disabled:text-neutral-400 text-white font-mono uppercase text-sm flex items-center justify-center gap-2"
-                              >
-                                {claimingProvider === stampId ? (
-                                  <>
-                                    <Loader2 size={14} className="animate-spin" />
-                                    Claiming...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Coins size={14} />
-                                    Claim Points
-                                  </>
-                                )}
-                              </button>
+                              {verification?.claimedTxId ? (
+                                <div className="mt-3 p-2 bg-neutral-800/50 border border-neutral-600 rounded text-xs text-neutral-400 font-mono flex items-center gap-2">
+                                  <Check size={14} className="shrink-0 text-green-500" />
+                                  Already claimed. Points are on-chain.
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="mt-3 p-2 bg-green-900/20 border border-green-700/30 rounded text-xs text-green-300 font-mono">
+                                    Claim points to add them to your wallet on-chain.
+                                  </div>
+                                  <button
+                                    onClick={() => handleClaimPoints(stampId)}
+                                    disabled={claimingProvider === stampId || !publicKey}
+                                    className="mt-3 w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-neutral-800 disabled:text-neutral-400 text-white font-mono uppercase text-sm flex items-center justify-center gap-2"
+                                  >
+                                    {claimingProvider === stampId ? (
+                                      <>
+                                        <Loader2 size={14} className="animate-spin" />
+                                        Claiming...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Coins size={14} />
+                                        Claim Points
+                                      </>
+                                    )}
+                                  </button>
+                                </>
+                              )}
                             </>
                           )}
                         </div>
