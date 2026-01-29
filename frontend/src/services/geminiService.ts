@@ -34,7 +34,7 @@ export const verifyHumanityWithGemini = async (
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     const prompt = `
-      You are the Gatekeeper of VERIF, a strict digital entity verifier. 
+      You are the Gatekeeper of zkPersona, a strict digital entity verifier. 
       Your goal is to distinguish between a human giving a nuanced, imperfect, or creative answer, 
       and a bot/AI giving a generic, wikipedia-style, or overly polished answer.
 

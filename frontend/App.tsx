@@ -116,7 +116,7 @@ const Header = ({
         onClick={() => onNavClick && onNavClick('landing')}
       >
         <ShieldCheck className="w-8 h-8 text-white group-hover:scale-110 transition-transform" />
-        <span className="text-xl font-bold tracking-tighter text-white">VERIF</span>
+        <span className="text-xl font-bold tracking-tighter text-white">zkPersona</span>
       </div>
       
       <div className="flex items-center gap-6">
@@ -197,7 +197,7 @@ const LandingPage = ({ onEnterApp }: { onEnterApp: () => void }) => (
       <div className="max-w-4xl mx-auto px-6 text-center z-10 relative mt-20 md:mt-0">
         <div className="inline-flex items-center gap-2 px-3 py-1 border border-neutral-800 rounded-full mb-8 bg-black/50 backdrop-blur-sm">
           <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-          <span className="text-xs uppercase tracking-widest text-neutral-400 font-mono">Verif Protocol v1.0 Live</span>
+          <span className="text-xs uppercase tracking-widest text-neutral-400 font-mono">zkPersona v1.0 Live</span>
         </div>
         
         <h1 className="text-5xl md:text-7xl lg:text-9xl font-bold tracking-tighter text-white mb-8 leading-[0.9]">
@@ -269,7 +269,7 @@ const LandingPage = ({ onEnterApp }: { onEnterApp: () => void }) => (
           <FeatureCard 
             icon={<Users className="w-6 h-6" />}
             title="Community Governance"
-            text="The protocol parameters and weight of each stamp are determined by the VERIF DAO."
+            text="The protocol parameters and weight of each stamp are determined by the zkPersona DAO."
           />
         </div>
       </div>
@@ -358,7 +358,7 @@ const LandingPage = ({ onEnterApp }: { onEnterApp: () => void }) => (
       <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-6 h-6 text-white" />
-          <span className="text-lg font-bold tracking-tighter text-white">VERIF</span>
+          <span className="text-lg font-bold tracking-tighter text-white">zkPersona</span>
         </div>
         <div className="flex gap-8 text-sm text-neutral-500 font-mono">
           <a href="#" className="hover:text-white transition-colors">Discord</a>
@@ -366,7 +366,7 @@ const LandingPage = ({ onEnterApp }: { onEnterApp: () => void }) => (
           <a href="#" className="hover:text-white transition-colors">Mirror</a>
         </div>
         <div className="text-neutral-600 text-xs font-mono">
-          © 2026 VERIF PROTOCOL LABS
+          © 2026 zkPersona
         </div>
       </div>
     </footer>
@@ -585,27 +585,22 @@ const Dashboard = ({ user, onVerifyStamp }: { user: UserState; onVerifyStamp: (i
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {stampsLoading ? (
-                <div className="col-span-full">
-                  <GlobalLoader message="Loading stamps from blockchain..." />
-                </div>
-              ) : (
-                stamps
-                  .filter((stamp) => {
-                    const category = selectedCategory || 'all';
-                    if (category === 'all') return true;
-                    if (category === 'social') {
-                      return ['discord', 'telegram'].includes(stamp.provider);
-                    }
-                    if (category === 'onchain') {
-                      return ['ethereum', 'eth_wallet', 'solana'].includes(stamp.provider);
-                    }
-                    if (category === 'other') {
-                      return ['gemini', 'face_scan', 'steam'].includes(stamp.provider);
-                    }
-                    return true;
-                  })
-                  .map((stamp, index) => (
+              {stamps
+                .filter((stamp) => {
+                  const category = selectedCategory || 'all';
+                  if (category === 'all') return true;
+                  if (category === 'social') {
+                    return ['discord', 'twitter'].includes(stamp.provider);
+                  }
+                  if (category === 'onchain') {
+                    return ['ethereum', 'eth_wallet', 'solana'].includes(stamp.provider);
+                  }
+                  if (category === 'other') {
+                    return ['gemini', 'face_scan', 'steam'].includes(stamp.provider);
+                  }
+                  return true;
+                })
+                .map((stamp, index) => (
                     <div 
                       key={stamp.id}
                       className="animate-slide-in"
@@ -625,8 +620,7 @@ const Dashboard = ({ user, onVerifyStamp }: { user: UserState; onVerifyStamp: (i
                         }}
                       />
                     </div>
-                  ))
-              )}
+                  ))}
             </div>
           </>
         )}
@@ -643,7 +637,7 @@ const Dashboard = ({ user, onVerifyStamp }: { user: UserState; onVerifyStamp: (i
       {/* Footer Info */}
       <div className="mt-20 pt-10 border-t border-neutral-900 text-center">
         <p className="text-neutral-600 text-sm font-mono">
-          VERIF PROTOCOL &copy; 2026. BUILT ON ALEO. POWERED BY GEMINI.
+          zkPersona &copy; 2026. BUILT ON ALEO. POWERED BY GEMINI.
         </p>
       </div>
 
@@ -987,7 +981,7 @@ const App = () => {
   const wallets = useMemo(
     () => [
       new LeoWalletAdapter({
-        appName: "VERIF Protocol",
+        appName: "zkPersona",
       }),
     ],
     []

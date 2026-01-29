@@ -97,7 +97,7 @@ export const Leaderboard: React.FC = () => {
       <div className="mt-8 p-6 border border-dashed border-neutral-800 flex items-center gap-4 bg-white/5">
         <Zap className="text-white animate-pulse" />
         <p className="text-sm text-neutral-400 font-mono">
-          Top 100 users receive a multiplier on all VERIF ecosystem rewards.
+          Top 100 users receive a multiplier on all zkPersona ecosystem rewards.
         </p>
       </div>
     </div>

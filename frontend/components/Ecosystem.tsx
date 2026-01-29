@@ -9,7 +9,7 @@ const DAPPS = [
   {
     name: 'Snapshot Governance',
     category: 'DAO',
-    description: 'Use your VERIF score to filter out sybil voters in critical proposals.',
+    description: 'Use your zkPersona score to filter out sybil voters in critical proposals.',
     minScore: 25,
     icon: <Vote className="w-6 h-6" />,
   },
