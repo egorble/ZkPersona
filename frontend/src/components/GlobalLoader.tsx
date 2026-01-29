@@ -13,7 +13,7 @@ export const GlobalLoader: React.FC<GlobalLoaderProps> = ({
   return (
     <div 
       className={`flex items-center justify-center ${
-        fullScreen ? 'fixed inset-0 z-[9999] bg-black/95 backdrop-blur-md' : 'w-full h-full min-h-[200px]'
+        fullScreen ? 'fixed inset-0 z-[9999] bg-black/90' : 'w-full h-full min-h-[200px]'
       }`}
       style={{ animation: 'fadeIn 0.2s ease-in' }}
     >

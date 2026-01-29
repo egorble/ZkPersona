@@ -116,7 +116,7 @@ npm run test:coverage
 npm run test:e2e
 ```
 
-See [TESTING.md](frontend/TESTING.md) for detailed testing information.
+See the `frontend` folder for test setup and scripts.
 
 ## Smart Contract
 

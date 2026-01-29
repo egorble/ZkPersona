@@ -387,11 +387,11 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md overflow-y-auto transition-opacity duration-300"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 overflow-y-auto"
       style={{ animation: 'fadeIn 0.3s ease-in' }}
     >
       <div 
-        className="bg-neutral-900 border border-neutral-800 rounded-lg max-w-4xl w-full mx-4 my-8 max-h-[90vh] overflow-hidden flex flex-col shadow-2xl transition-all duration-300"
+        className="bg-neutral-900 border border-neutral-800 rounded-lg max-w-4xl w-full mx-4 my-8 max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
         style={{ animation: 'zoomIn 0.3s ease-out' }}
       >
         {/* Header */}
@@ -483,70 +483,54 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
                           </div>
                         </div>
                       )}
-                      {/* Show verification result from blockchain or pending claim */}
-                      {verification?.verified && (
+                      {/* Single card: verified state and/or claim points (no duplicate blocks) */}
+                      {(verification?.verified || verificationResults[stampId]) && (
                         <div className="mt-2 p-3 bg-green-950/30 border border-green-800/50 rounded">
-                          <div className="flex items-center justify-between">
-                            <span className="text-green-400 font-mono text-sm">вњ“ Verified</span>
-                            <span className="text-green-400 font-bold font-mono">{verification.score} / {config?.maxScore || 35} pts</span>
-                          </div>
-                          {verification.criteria && verification.criteria.length > 0 && (
-                            <div className="mt-2 space-y-1">
-                              {verification.criteria.map((criterion, idx) => (
-                                <div key={idx} className="text-xs text-green-300 font-mono">
-                                  вЂў {criterion.condition}: +{criterion.points} pts
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      
-                      {/* Show pending verification result (popup flow: Discord) or persisted (Telegram/Solana callback) — Claim Points */}
-                      {(verificationResults[stampId] && !verification?.verified) || (verification?.verified && verification?.commitment && ['telegram', 'solana', 'discord'].includes(stampId)) ? (
-                        <div className="mt-2 p-3 bg-blue-950/30 border border-blue-800/50 rounded">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-blue-400 font-mono text-sm">Verification Complete</span>
-                            <span className="text-blue-400 font-bold font-mono">
-                              {(verificationResults[stampId]?.score ?? verification?.score) ?? 0} pts
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-green-400 font-mono text-sm flex items-center gap-1.5">
+                              <Check size={14} className="shrink-0" />
+                              Verified
+                            </span>
+                            <span className="text-green-400 font-bold font-mono">
+                              {(verificationResults[stampId]?.score ?? verification?.score) ?? 0} / {config?.maxScore || 35} pts
                             </span>
                           </div>
                           {((verificationResults[stampId]?.criteria ?? verification?.criteria) || []).length > 0 && (
-                            <div className="mt-2 space-y-1 mb-3">
+                            <div className="mt-2 space-y-1">
                               {((verificationResults[stampId]?.criteria ?? verification?.criteria) || []).map((criterion: { condition: string; points: number }, idx: number) => (
-                                <div key={idx} className="text-xs text-blue-300 font-mono">
-                                  • {criterion.condition}: +{criterion.points} pts
+                                <div key={idx} className="text-xs text-green-300 font-mono flex items-center gap-1.5">
+                                  <span className="text-green-500">-</span>
+                                  {criterion.condition}: +{criterion.points} pts
                                 </div>
                               ))}
                             </div>
                           )}
-                          <div className="mb-3 p-2 bg-blue-900/20 border border-blue-700/30 rounded text-xs text-blue-300 font-mono">
-                            Verification complete. Claim points to add them to your wallet on-chain.
-                          </div>
-                          <button
-                            onClick={() => handleClaimPoints(stampId)}
-                            disabled={claimingProvider === stampId || !publicKey}
-                            className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-neutral-800 disabled:text-neutral-400 text-white font-mono uppercase text-sm transition-all duration-300 flex items-center justify-center gap-2 hover:scale-105 active:scale-95 disabled:scale-100 relative overflow-hidden"
-                            style={{
-                              animation: claimingProvider === stampId 
-                                ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' 
-                                : undefined
-                            }}
-                          >
-                            {claimingProvider === stampId ? (
-                              <>
-                                <Loader2 size={14} className="animate-spin" />
-                                Claiming Points...
-                              </>
-                            ) : (
-                              <>
-                                <Coins size={14} className="group-hover:rotate-12 transition-transform" />
-                                Claim Points
-                              </>
-                            )}
-                          </button>
+                          {['telegram', 'solana', 'discord'].includes(stampId) && (verification?.commitment || verificationResults[stampId]?.commitment) && (
+                            <>
+                              <div className="mt-3 p-2 bg-green-900/20 border border-green-700/30 rounded text-xs text-green-300 font-mono">
+                                Claim points to add them to your wallet on-chain.
+                              </div>
+                              <button
+                                onClick={() => handleClaimPoints(stampId)}
+                                disabled={claimingProvider === stampId || !publicKey}
+                                className="mt-3 w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-neutral-800 disabled:text-neutral-400 text-white font-mono uppercase text-sm flex items-center justify-center gap-2"
+                              >
+                                {claimingProvider === stampId ? (
+                                  <>
+                                    <Loader2 size={14} className="animate-spin" />
+                                    Claiming...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Coins size={14} />
+                                    Claim Points
+                                  </>
+                                )}
+                              </button>
+                            </>
+                          )}
                         </div>
-                      ) : null}
+                      )}
                     </div>
                     <button
                       onClick={() => {
@@ -563,7 +547,7 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
                         successModalProvider === stampId ||
                         (stampId === 'ethereum' || stampId === 'eth_wallet')
                       }
-                      className={`px-4 py-2 font-mono uppercase text-sm transition-all duration-300 relative overflow-hidden ${
+                      className={`px-4 py-2 font-mono uppercase text-sm relative overflow-hidden flex items-center justify-center gap-2 ${
                         (stampId === 'ethereum' || stampId === 'eth_wallet')
                           ? 'bg-neutral-900 text-neutral-500 border border-neutral-800 cursor-not-allowed'
                           : isConnected
@@ -594,7 +578,10 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
                           Verifying...
                         </>
                       ) : isConnected ? (
-                        `вњ“ Verified (${verification.score} pts)`
+                        <>
+                          <Check size={14} className="shrink-0" />
+                          Verified ({verification.score} pts)
+                        </>
                       ) : (
                         'Start Verification'
                       )}
@@ -621,7 +608,7 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
         const name = successModalProvider === 'discord' ? 'Discord' : successModalProvider === 'telegram' ? 'Telegram' : 'Solana';
         return (
           <div
-            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80"
             onClick={() => setSuccessModalProvider(null)}
           >
             <div
@@ -658,7 +645,7 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
                     }
                   }}
                   disabled={claimingProvider === successModalProvider || initContractInProgress || !publicKey || !res}
-                  className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-white text-black font-mono uppercase text-sm font-semibold hover:bg-neutral-100 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-white text-black font-mono uppercase text-sm font-semibold hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {claimingProvider === successModalProvider ? (
                     <>
@@ -680,12 +667,12 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
 
       {showWalletRequiredModal && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md transition-opacity duration-300"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
           style={{ animation: 'fadeIn 0.3s ease-in' }}
           onClick={() => setShowWalletRequiredModal(false)}
         >
           <div 
-            className="bg-black border border-neutral-700 max-w-md w-full p-8 relative shadow-2xl transition-all duration-300"
+            className="bg-black border border-neutral-700 max-w-md w-full p-8 relative shadow-2xl"
             onClick={(e) => e.stopPropagation()}
             style={{ animation: 'zoomIn 0.3s ease-out' }}
           >
@@ -728,7 +715,7 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
 
               <button
                 onClick={() => setShowWalletRequiredModal(false)}
-                className="w-full px-6 py-3 bg-white text-black font-mono uppercase text-sm hover:bg-neutral-100 transition-all duration-300 hover:scale-105 active:scale-95 relative overflow-hidden"
+                className="w-full px-6 py-3 bg-white text-black font-mono uppercase text-sm hover:bg-neutral-100 relative overflow-hidden"
               >
                 Got it
               </button>

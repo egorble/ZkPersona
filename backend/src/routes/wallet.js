@@ -175,8 +175,8 @@ router.post('/verify', async (req, res) => {
     const secretSalt = process.env.SECRET_SALT || 'zkpersona-secret-salt';
     const commitment = generateAleoCommitment(platformId, walletAddress.toLowerCase(), secretSalt);
     
-    // GITCOIN PASSPORT MODEL: НЕ зберігаємо верифікацію в БД!
-    // Просто повертаємо результат
+    // GITCOIN PASSPORT MODEL: do not persist verification in DB
+    // Just return result
     
     res.json({
       success: true,
@@ -185,7 +185,7 @@ router.post('/verify', async (req, res) => {
       commitment: commitment,
       maxScore: scoreData.maxScore,
       criteria: scoreData.criteria
-      // НЕ повертаємо: walletAddress (personal data)
+      // Do not return: walletAddress (personal data)
     });
   } catch (error) {
     console.error('[Wallet] Verify error:', error);

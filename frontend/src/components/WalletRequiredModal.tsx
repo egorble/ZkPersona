@@ -18,7 +18,7 @@ export const WalletRequiredModal: React.FC<WalletRequiredModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
       onClick={onClose}
       style={{ animation: 'fadeIn 0.3s ease-in' }}
     >

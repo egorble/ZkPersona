@@ -284,8 +284,8 @@ router.post('/wallet', async (req, res) => {
       });
     }
     
-    // GITCOIN PASSPORT MODEL: НЕ зберігаємо в БД!
-    // Просто повертаємо результат для frontend
+    // GITCOIN PASSPORT MODEL: do not persist in DB
+    // Just return result for frontend
     console.log('[Verify/Wallet] Verification successful:', {
       hasScore: !!result.score,
       hasCommitment: !!result.commitment,

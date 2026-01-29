@@ -111,10 +111,10 @@ const handleAuthCallback = async (req, res, provider, callbackHandler) => {
       provider
     });
     
-    // GITCOIN PASSPORT MODEL: НЕ зберігаємо верифікацію в БД!
-    // Scores зберігаються тільки на blockchain (Aleo) через claim_social_stamp
-    // Backend тільки розраховує score та повертає результат
-    
+    // GITCOIN PASSPORT MODEL: do not persist verification in DB
+    // Scores are stored only on blockchain (Aleo) via claim_social_stamp
+    // Backend only computes score and returns result
+
     if (!result.verified) {
       return res.send(`
         <!DOCTYPE html>
@@ -132,14 +132,14 @@ const handleAuthCallback = async (req, res, provider, callbackHandler) => {
       `);
     }
     
-    // Підготувати результат для frontend (БЕЗ особистих даних)
+    // Prepare result for frontend (no personal data)
     const frontendResult = {
       provider: result.provider || provider,
       score: result.score || 0,
       commitment: result.commitment || null,
       criteria: result.criteria || [],
       maxScore: result.maxScore || result.score || 0
-      // НЕ повертаємо: userId, email, username, profile
+      // Do not return: userId, email, username, profile
     };
     
     // PostMessage target '*' so opener receives regardless of port (5173 vs 5174 etc). Frontend validates structure & provider.
@@ -418,13 +418,13 @@ router.post('/telegram/webhook', async (req, res) => {
       }
     };
 
-    // GITCOIN PASSPORT MODEL: НЕ зберігаємо верифікацію в БД!
+    // GITCOIN PASSPORT MODEL: do not persist verification in DB
     // Generate Aleo-compatible commitment
     const platformId = 4; // Telegram = 4
     const secretSalt = process.env.SECRET_SALT || 'zkpersona-secret-salt';
     const commitment = generateAleoCommitment(platformId, message.from.id.toString(), secretSalt);
     
-    // Додати commitment до результату
+    // Add commitment to result
     result.commitment = commitment;
 
     // Update session with result and status
@@ -513,11 +513,11 @@ router.post('/solana/callback', async (req, res) => {
       stateData: session.stateData
     });
 
-    // GITCOIN PASSPORT MODEL: НЕ зберігаємо верифікацію в БД!
-    // Просто повертаємо результат через postMessage (якщо це popup) або JSON (якщо direct call)
-    
+    // GITCOIN PASSPORT MODEL: do not persist verification in DB
+    // Just return result via postMessage (if popup) or JSON (if direct call)
+
     if (result.verified) {
-      // Підготувати результат для frontend (БЕЗ особистих даних)
+      // Prepare result for frontend (no personal data)
       const frontendResult = {
         provider: 'solana',
         score: result.score || 0,
@@ -526,11 +526,11 @@ router.post('/solana/callback', async (req, res) => {
         maxScore: result.maxScore || result.score || 0
       };
       
-      // Якщо це popup (через window.opener), використати postMessage
-      // Інакше повернути JSON (для direct API calls)
+      // If popup (via window.opener), use postMessage
+      // Otherwise return JSON (for direct API calls)
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       
-      // Для Solana, зазвичай це direct API call, але можна підтримати обидва варіанти
+      // For Solana, usually a direct API call; both flows can be supported
       if (req.headers['x-requested-with'] === 'XMLHttpRequest' || req.headers.accept?.includes('application/json')) {
         return res.json(frontendResult);
       }

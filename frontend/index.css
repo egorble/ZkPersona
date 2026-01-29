@@ -21,6 +21,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Limit repaints for fixed overlays (modals) */
+[class*="fixed inset-0"][class*="z-50"],
+[class*="fixed inset-0"][class*="z-[60]"],
+[class*="fixed inset-0"][class*="z-[9999]"] {
+  contain: layout paint;
+}
+
 #root {
   min-height: 100vh;
 }
@@ -49,6 +56,7 @@ a {
   color: inherit;
 }
 
+/* Use transform+opacity only for smooth 60fps animations */
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -232,11 +240,11 @@ a {
   animation: bounce 1s infinite;
 }
 
-/* Button hover effects */
+/* Button hover: only transform/opacity for smoothness (no layout thrashing) */
 button {
   position: relative;
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.2s ease-out, opacity 0.2s ease-out, background-color 0.2s ease-out, color 0.2s ease-out;
 }
 
 button::before {
@@ -249,7 +257,8 @@ button::before {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.1);
   transform: translate(-50%, -50%);
-  transition: width 0.6s, height 0.6s;
+  transition: transform 0.15s ease-out;
+  will-change: transform;
 }
 
 button:hover::before {
@@ -259,11 +268,6 @@ button:hover::before {
 
 button:active {
   transform: scale(0.98);
-}
-
-/* Card hover effects */
-.group:hover {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Loading skeleton */
@@ -278,9 +282,4 @@ button:active {
   animation: shimmer 1.5s infinite;
 }
 
-/* Smooth transitions */
-* {
-  transition-property: color, background-color, border-color, opacity, transform;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
+/* No global transition on * - was causing low FPS. Use transition-* only on specific components. */

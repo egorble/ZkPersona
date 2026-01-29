@@ -191,12 +191,12 @@ export const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity duration-300"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
       style={{ animation: 'fadeIn 0.3s ease-in' }}
       onClick={onClose}
     >
       <div 
-        className="bg-neutral-900 border border-neutral-800 rounded-lg max-w-md w-full mx-4 p-6 relative transition-all duration-300"
+        className="bg-neutral-900 border border-neutral-800 rounded-lg max-w-md w-full mx-4 p-6 relative"
         style={{ animation: 'zoomIn 0.3s ease-out' }}
         onClick={(e) => e.stopPropagation()}
       >

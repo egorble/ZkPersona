@@ -1,6 +1,6 @@
 // Backend API client for verification system
-// Backend URL: використовує production URL з .env або fallback на localhost
-// Для production: встановити VITE_BACKEND_URL в .env.production або .env
+// Backend URL: uses production URL from .env or fallback to localhost
+// For production: set VITE_BACKEND_URL in .env.production or .env
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
 export interface VerificationSession {

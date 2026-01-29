@@ -1,6 +1,6 @@
 // PM2 ecosystem configuration for production
-// Використовується для постійної роботи backend на VPS
-// PM2 ecosystem.config.js використовує CommonJS (навіть якщо проект ES modules)
+// Used to run backend continuously on VPS
+// PM2 ecosystem.config.js uses CommonJS (even if project is ES modules)
 
 module.exports = {
   apps: [{

@@ -57,11 +57,11 @@ export const StampSelectionModal: React.FC<StampSelectionModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md transition-opacity duration-300"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
       style={{ animation: 'fadeIn 0.3s ease-in' }}
     >
       <div 
-        className="bg-neutral-900 border border-neutral-800 rounded-lg max-w-3xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col shadow-2xl transition-all duration-300"
+        className="bg-neutral-900 border border-neutral-800 rounded-lg max-w-3xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
         style={{ animation: 'zoomIn 0.3s ease-out' }}
       >
         {/* Header */}

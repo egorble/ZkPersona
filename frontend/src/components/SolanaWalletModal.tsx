@@ -123,7 +123,7 @@ export const SolanaWalletModal: React.FC<SolanaWalletModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
       <div className="bg-neutral-900 border border-neutral-800 rounded-lg max-w-md w-full mx-4 p-6 relative">
         <button
           onClick={onClose}

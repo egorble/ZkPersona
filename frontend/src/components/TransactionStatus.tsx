@@ -134,7 +134,7 @@ export const TransactionStatus: React.FC<TransactionStatusProps> = ({
 
   return (
     <div 
-      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md transition-opacity duration-300 ${
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/80 ${
         isClosing ? 'opacity-0' : 'opacity-100'
       }`}
       style={{
@@ -142,7 +142,7 @@ export const TransactionStatus: React.FC<TransactionStatusProps> = ({
       }}
     >
       <div 
-        className={`bg-neutral-900 border border-neutral-800 rounded-lg max-w-md w-full mx-4 p-8 shadow-2xl transition-all duration-300 ${
+        className={`bg-neutral-900 border border-neutral-800 rounded-lg max-w-md w-full mx-4 p-8 shadow-2xl ${
           isClosing ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
         }`}
         style={{

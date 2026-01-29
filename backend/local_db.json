@@ -326,6 +326,21 @@
         "createdAt": "2026-01-29T12:43:58.367Z",
         "expiresAt": "2026-01-29T13:43:58.367Z"
       }
+    ],
+    [
+      "discord_38de74c4-902b-4451-9a74-fec336b9a93c",
+      {
+        "sessionId": "discord_38de74c4-902b-4451-9a74-fec336b9a93c",
+        "provider": "discord",
+        "userId": "aleo1e46vlesnaw2gvl99ln9zedjeanmus6swzkk93w5568ne5yux95psdngyst",
+        "status": "pending",
+        "stateData": {
+          "walletId": "aleo1e46vlesnaw2gvl99ln9zedjeanmus6swzkk93w5568ne5yux95psdngyst",
+          "status": "in_progress"
+        },
+        "createdAt": "2026-01-29T17:21:16.620Z",
+        "expiresAt": "2026-01-29T18:21:16.620Z"
+      }
     ]
   ],
   "profiles": []
