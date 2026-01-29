@@ -49,7 +49,10 @@ import {
   Wallet,
   X,
   Loader2,
-  Gamepad2
+  Gamepad2,
+  Globe,
+  Twitter,
+  Github
 } from 'lucide-react';
 
 // --- Static Data (fallback stamps) ---
