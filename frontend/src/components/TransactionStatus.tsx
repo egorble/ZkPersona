@@ -89,7 +89,7 @@ export const TransactionStatus: React.FC<TransactionStatusProps> = ({
     }
   }, [txId, propFunctionName]);
 
-  const displayFunctionName = transactionFunctionName 
+  const displayFunctionName = transactionFunctionName
     ? getFunctionDisplayName(transactionFunctionName)
     : null;
 
@@ -129,22 +129,20 @@ export const TransactionStatus: React.FC<TransactionStatusProps> = ({
     ? `https://testnet.explorer.provable.com/transaction/${txId}`
     : null;
   const aleoExplorerUrl = txId
-    ? `https://explorer.aleo.org/testnet3/transaction/${txId}`
+    ? `https://testnet.aleoscan.io/transaction/${txId}`
     : null;
 
   return (
-    <div 
-      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/80 ${
-        isClosing ? 'opacity-0' : 'opacity-100'
-      }`}
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/80 ${isClosing ? 'opacity-0' : 'opacity-100'
+        }`}
       style={{
         animation: isClosing ? 'fadeOut 0.3s ease-out' : 'fadeIn 0.3s ease-in'
       }}
     >
-      <div 
-        className={`bg-neutral-900 border border-neutral-800 rounded-lg max-w-md w-full mx-4 p-8 shadow-2xl ${
-          isClosing ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
-        }`}
+      <div
+        className={`bg-neutral-900 border border-neutral-800 rounded-lg max-w-md w-full mx-4 p-8 shadow-2xl ${isClosing ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+          }`}
         style={{
           animation: isClosing ? 'zoomOut 0.3s ease-out' : 'zoomIn 0.3s ease-out'
         }}
@@ -231,7 +229,7 @@ export const TransactionStatus: React.FC<TransactionStatusProps> = ({
                 </div>
               )}
               <p className="text-neutral-400 text-sm font-mono mb-4">
-                {transactionFunctionName === 'claim_points' 
+                {transactionFunctionName === 'claim_points'
                   ? 'Claim points setup complete. You can now claim.'
                   : 'Transaction confirmed successfully'}
               </p>

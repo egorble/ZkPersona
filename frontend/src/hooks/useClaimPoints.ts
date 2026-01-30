@@ -194,7 +194,7 @@ export const useClaimPoints = () => {
       // 5. Create transaction
       const transaction = Transaction.createTransaction(
         publicKey,
-        WalletAdapterNetwork.Testnet, // Use Testnet enum (usually safer compatibility)
+        WalletAdapterNetwork.TestnetBeta, // Use TestnetBeta to match wallet network
         PROGRAM_ID,
         'claim_verification',
         [`${platformId}u8`, commitment, pointsU64],
