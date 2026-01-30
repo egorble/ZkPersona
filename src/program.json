@@ -1,5 +1,5 @@
 {
-  "program": "zkpersona_passport_v5.aleo",
+  "program": "zkpersona_passport_v6.aleo",
   "version": "0.4.0",
   "description": "ZK Gitcoin Passport on Aleo - claim_points + claim_point (v4)",
   "license": "MIT"

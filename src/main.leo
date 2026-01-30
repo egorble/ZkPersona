@@ -1,6 +1,6 @@
 // ZK Passport Identity System
 
-program zkpersona_passport_v5.aleo {
+program zkpersona_passport_v6.aleo {
     @noupgrade
     async constructor() {}
 
@@ -59,6 +59,7 @@ program zkpersona_passport_v5.aleo {
     mapping social_commitments: field => SocialBinding;
     mapping used_commitments: field => bool;  // commitment => used (prevents double claim; no user/platform/points stored)
     mapping user_platform_claims: field => bool;  // hash(user_address, platform_id) => bool (prevents same user claiming same platform twice)
+    mapping user_total_points: address => u64;  // points credited to account (simple claim, no passport)
 
     // Helper functions
     inline calculate_humanity_score(stamps_count: u32, total_points: u64) -> u64 {
@@ -572,6 +573,48 @@ program zkpersona_passport_v5.aleo {
         let hash: field = user_field * 7919field + platform_field * 7907field;
         hash = hash * (user_field + platform_field);
         return hash;
+    }
+
+    // Простий клейм поінтів: одна транзакція на соцмережу, без паспорта. Поінти прив'язуються до caller.
+    async transition claim_verification(
+        public platform_id: u8,
+        private social_commitment: field,
+        public points: u64
+    ) -> Future {
+        return finalize_claim_verification(social_commitment, platform_id, self.caller, points);
+    }
+
+    async function finalize_claim_verification(
+        commitment: field,
+        platform_id: u8,
+        user: address,
+        points: u64
+    ) {
+        let default_binding: SocialBinding = SocialBinding {
+            commitment: 0field,
+            platform_id: 0u8,
+            claimed_at: 0u64,
+            is_active: false,
+        };
+        let existing: SocialBinding = Mapping::get_or_use(social_commitments, commitment, default_binding);
+        assert(!existing.is_active);
+
+        let now: u64 = 0u64;
+        let binding: SocialBinding = SocialBinding {
+            commitment: commitment,
+            platform_id: platform_id,
+            claimed_at: now,
+            is_active: true,
+        };
+        Mapping::set(social_commitments, commitment, binding);
+
+        let user_platform_hash: field = hash_user_platform(user, platform_id);
+        let already_claimed: bool = Mapping::get_or_use(user_platform_claims, user_platform_hash, false);
+        assert(!already_claimed);
+        Mapping::set(user_platform_claims, user_platform_hash, true);
+
+        let current: u64 = Mapping::get_or_use(user_total_points, user, 0u64);
+        Mapping::set(user_total_points, user, current + points);
     }
 
     // Claim points after successful social connection. Author, platform, points private; only opaque hashes stored.

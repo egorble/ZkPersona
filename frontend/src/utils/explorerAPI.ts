@@ -29,8 +29,9 @@ const FUNCTION_NAME_MAP: Record<string, string> = {
     'claim_points': 'Claim points',
     'aggregate_stamps': 'Aggregate Stamps',
     'prove_access': 'Prove Access',
-    'claim_social_stamp': 'Connect Social Network', // Original: claim_social_stamp
-    'claim_point': 'Claim Points', // Original: claim_point
+    'claim_verification': 'Claim Points',
+    'claim_social_stamp': 'Connect Social Network',
+    'claim_point': 'Claim Points',
     
     // Admin functions
     'initialize': 'Initialize Contract',

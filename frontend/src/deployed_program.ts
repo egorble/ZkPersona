@@ -1,5 +1,4 @@
-// Aleo Program ID (v5: default stamps in initialize, claim_social_stamp)
-// Deployed: zkpersona_passport_v5.aleo
-// Deploy TX: at12s6clltped7kp8k4jwk3xyn89mh5edur2yaef3ewqp9gs3au3vpqtnszz6
-export const PROGRAM_ID = "zkpersona_passport_v5.aleo";
+// Aleo Program ID (v6). claim_verification(platform_id, commitment, points) — no passport.
+// Deploy TX: at1gmj05aqypxtqntm53cg90mz4agv0j6gywszj0huzgl5tu6gad5gqk3tqlc
+export const PROGRAM_ID = "aleo1e46vlesnaw2gvl99ln9zedjeanmus6swzkk93w5568ne5yux95psdngyst.zkpersona_passport_v6.aleo";
 

@@ -1,4 +1,4 @@
-program zkpersona_passport_v5.aleo;
+program zkpersona_passport_v6.aleo;
 
 record Passport:
     owner as address.private;
@@ -79,10 +79,14 @@ mapping user_platform_claims:
     key as field.public;
     value as boolean.public;
 
+mapping user_total_points:
+    key as address.public;
+    value as u64.public;
+
 function initialize:
     input r0 as address.private;
     async initialize r0 into r1;
-    output r1 as zkpersona_passport_v5.aleo/initialize.future;
+    output r1 as zkpersona_passport_v6.aleo/initialize.future;
 
 finalize initialize:
     input r0 as address.public;
@@ -117,7 +121,7 @@ function add_admin:
     input r0 as address.public;
     input r1 as u8.public;
     async add_admin self.caller r0 r1 into r2;
-    output r2 as zkpersona_passport_v5.aleo/add_admin.future;
+    output r2 as zkpersona_passport_v6.aleo/add_admin.future;
 
 finalize add_admin:
     input r0 as address.public;
@@ -135,7 +139,7 @@ finalize add_admin:
 function remove_admin:
     input r0 as address.public;
     async remove_admin self.caller r0 into r1;
-    output r1 as zkpersona_passport_v5.aleo/remove_admin.future;
+    output r1 as zkpersona_passport_v6.aleo/remove_admin.future;
 
 finalize remove_admin:
     input r0 as address.public;
@@ -155,7 +159,7 @@ function create_stamp:
     input r2 as field.public;
     async create_stamp self.caller r0 r1 r2 into r3;
     output 0u32 as u32.private;
-    output r3 as zkpersona_passport_v5.aleo/create_stamp.future;
+    output r3 as zkpersona_passport_v6.aleo/create_stamp.future;
 
 finalize create_stamp:
     input r0 as address.public;
@@ -178,7 +182,7 @@ function edit_stamp:
     input r1 as u64.public;
     input r2 as boolean.public;
     async edit_stamp self.caller r0 r1 r2 into r3;
-    output r3 as zkpersona_passport_v5.aleo/edit_stamp.future;
+    output r3 as zkpersona_passport_v6.aleo/edit_stamp.future;
 
 finalize edit_stamp:
     input r0 as address.public;
@@ -198,7 +202,7 @@ finalize edit_stamp:
 function delete_stamp:
     input r0 as u32.public;
     async delete_stamp self.caller r0 into r1;
-    output r1 as zkpersona_passport_v5.aleo/delete_stamp.future;
+    output r1 as zkpersona_passport_v6.aleo/delete_stamp.future;
 
 finalize delete_stamp:
     input r0 as address.public;
@@ -223,7 +227,7 @@ function issue_stamp:
     cast r1 r2 0u8 r3 0field 0u64 into r5 as StampRecord.record;
     async issue_stamp self.caller r2 r3 into r6;
     output r5 as StampRecord.record;
-    output r6 as zkpersona_passport_v5.aleo/issue_stamp.future;
+    output r6 as zkpersona_passport_v6.aleo/issue_stamp.future;
 
 finalize issue_stamp:
     input r0 as address.public;
@@ -254,7 +258,7 @@ function claim_social_stamp:
     async claim_social_stamp r2 r1 r3 r4 into r9;
     output r8 as Passport.record;
     output r6 as StampRecord.record;
-    output r9 as zkpersona_passport_v5.aleo/claim_social_stamp.future;
+    output r9 as zkpersona_passport_v6.aleo/claim_social_stamp.future;
 
 finalize claim_social_stamp:
     input r0 as field.public;
@@ -279,7 +283,7 @@ function claim_points:
     cast self.caller 0u32 0u64 0u64 0field 0field 0u64 0u64 r0 into r1 as Passport.record;
     async claim_points into r2;
     output r1 as Passport.record;
-    output r2 as zkpersona_passport_v5.aleo/claim_points.future;
+    output r2 as zkpersona_passport_v6.aleo/claim_points.future;
 
 finalize claim_points:
     assert.eq true true;
@@ -369,7 +373,7 @@ function aggregate_stamps:
     cast r0.owner r26 r40 r46 r71 r75 r0.issued_at 0u64 r0.nonce into r76 as Passport.record;
     async aggregate_stamps into r77;
     output r76 as Passport.record;
-    output r77 as zkpersona_passport_v5.aleo/aggregate_stamps.future;
+    output r77 as zkpersona_passport_v6.aleo/aggregate_stamps.future;
 
 finalize aggregate_stamps:
     assert.eq true true;
@@ -514,7 +518,7 @@ function prove_access:
     async prove_access r117 r7 into r118;
     output r117 as field.private;
     output true as boolean.private;
-    output r118 as zkpersona_passport_v5.aleo/prove_access.future;
+    output r118 as zkpersona_passport_v6.aleo/prove_access.future;
 
 finalize prove_access:
     input r0 as field.public;
@@ -525,6 +529,39 @@ finalize prove_access:
     assert.eq r4 true;
     cast r0 r1 0u64 into r5 as Nullifier;
     set r5 into nullifiers[r0];
+
+function claim_verification:
+    input r0 as u8.public;
+    input r1 as field.private;
+    input r2 as u64.public;
+    async claim_verification r1 r0 self.caller r2 into r3;
+    output r3 as zkpersona_passport_v6.aleo/claim_verification.future;
+
+finalize claim_verification:
+    input r0 as field.public;
+    input r1 as u8.public;
+    input r2 as address.public;
+    input r3 as u64.public;
+    cast 0field 0u8 0u64 false into r4 as SocialBinding;
+    get.or_use social_commitments[r0] r4 into r5;
+    not r5.is_active into r6;
+    assert.eq r6 true;
+    cast r0 r1 0u64 true into r7 as SocialBinding;
+    set r7 into social_commitments[r0];
+    cast r2 into r8 as field;
+    cast r1 into r9 as field;
+    mul r8 7919field into r10;
+    mul r9 7907field into r11;
+    add r10 r11 into r12;
+    add r8 r9 into r13;
+    mul r12 r13 into r14;
+    get.or_use user_platform_claims[r14] false into r15;
+    not r15 into r16;
+    assert.eq r16 true;
+    set true into user_platform_claims[r14];
+    get.or_use user_total_points[r2] 0u64 into r17;
+    add r17 r3 into r18;
+    set r18 into user_total_points[r2];
 
 function claim_point:
     input r0 as Passport.record;
@@ -550,7 +587,7 @@ function claim_point:
     cast r0.owner r0.total_stamps r12 r18 r0.stamps_commitment r0.score_commitment r0.issued_at 0u64 r0.nonce into r19 as Passport.record;
     async claim_point r2 r11 into r20;
     output r19 as Passport.record;
-    output r20 as zkpersona_passport_v5.aleo/claim_point.future;
+    output r20 as zkpersona_passport_v6.aleo/claim_point.future;
 
 finalize claim_point:
     input r0 as field.public;
