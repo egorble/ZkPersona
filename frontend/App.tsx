@@ -20,6 +20,7 @@ import { OAuthCallback } from './src/pages/OAuthCallback';
 import { VerifyCallback } from './src/pages/VerifyCallback';
 import { VerifyEVM } from './src/pages/VerifyEVM';
 import { VerifySolana } from './src/pages/VerifySolana';
+import { checkBalance, MIN_BALANCE_REQUIRED } from './src/utils/walletUtils';
 import { 
   ShieldCheck, 
   Bitcoin, 
@@ -101,13 +102,15 @@ const Header = ({
   onConnect, 
   onDisconnect,
   address,
-  onNavClick
+  onNavClick,
+  balance
 }: { 
   isConnected: boolean; 
   onConnect: () => void; 
   onDisconnect?: () => void;
   address: string | null;
   onNavClick?: (view: 'landing' | 'app') => void;
+  balance?: number;
 }) => (
   <header className="fixed top-0 w-full z-40 bg-black/80 backdrop-blur-md border-b border-neutral-900">
     <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
@@ -128,6 +131,19 @@ const Header = ({
         
         {isConnected ? (
           <div className="flex items-center gap-3">
+            {balance !== undefined && (
+               <div className="hidden md:flex flex-col items-end mr-2">
+                 <span className="font-mono text-xs text-neutral-400">Balance</span>
+                 <span className={`font-mono text-sm font-bold ${balance < MIN_BALANCE_REQUIRED ? 'text-red-500' : 'text-white'}`}>
+                   {(balance / 1000000).toFixed(2)} Credits
+                 </span>
+                 {balance < MIN_BALANCE_REQUIRED && (
+                    <a href="https://faucet.aleo.org" target="_blank" className="text-[10px] text-red-400 hover:underline">
+                      Get Testnet Tokens
+                    </a>
+                 )}
+               </div>
+            )}
             <div className="flex items-center gap-2 bg-neutral-900 px-4 py-2 rounded-full border border-neutral-800 transition-all duration-300 hover:scale-105">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
             <span className="font-mono text-xs text-neutral-300">{address?.slice(0, 6)}...{address?.slice(-4)}</span>
@@ -687,6 +703,22 @@ const AppContent = () => {
   
   const { publicKey, connect, disconnect, wallet, connecting, select, wallets } = useWallet();
   const [showWalletModal, setShowWalletModal] = useState(false);
+  const [balance, setBalance] = useState<number>(0);
+
+  // Poll for balance
+  useEffect(() => {
+    if (wallet && publicKey) {
+      checkBalance(wallet, publicKey).then(setBalance);
+      // Poll every 30 seconds
+      const interval = setInterval(() => {
+         checkBalance(wallet, publicKey).then(setBalance);
+      }, 30000);
+      return () => clearInterval(interval);
+    } else {
+      setBalance(0);
+    }
+  }, [wallet, publicKey]);
+
   const [user, setUser] = useState<UserState>(() => {
     // Load saved user state from localStorage (never restore score — it's wallet-scoped)
     const saved = localStorage.getItem('user_state');
@@ -882,6 +914,7 @@ const AppContent = () => {
     <div className="bg-background text-primary min-h-screen selection:bg-white selection:text-black">
       <Header 
         isConnected={user.isConnected} 
+        balance={balance}
         onConnect={() => setShowWalletModal(true)} 
         onDisconnect={async () => {
           try {

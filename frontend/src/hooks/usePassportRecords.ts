@@ -59,6 +59,11 @@ export const usePassportRecords = () => {
             // Records are encrypted/private - we don't parse them here
             let records: PassportRecord[] = [];
 
+            // ❌ REMOVED: requestRecordPlaintexts causing INVALID_PARAMS
+            // The wallet adapter doesn't seem to support this method correctly or permissions are missing.
+            // We'll skip this and rely on requestRecords (encrypted) below.
+            
+            /* 
             if (adapter.requestRecordPlaintexts) {
                 try {
                     console.log(`[PassportRecords] Requesting records for program: ${PROGRAM_ID}`);
@@ -76,6 +81,7 @@ export const usePassportRecords = () => {
                     }
                 }
             }
+            */
 
             // Fallback: try encrypted records
             if (records.length === 0 && adapter.requestRecords && publicKey) {

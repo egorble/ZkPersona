@@ -7,7 +7,7 @@ import { useVerification } from '../hooks/useVerification';
 import { VERIFICATION_CONFIGS } from '../services/verificationService';
 import { useWallet } from '@demox-labs/aleo-wallet-adapter-react';
 import { WalletAdapterNetwork, Transaction } from '@demox-labs/aleo-wallet-adapter-base';
-import { requestTransactionWithRetry } from '../utils/walletUtils';
+import { requestTransactionWithRetry, checkBalance, MIN_BALANCE_REQUIRED } from '../utils/walletUtils';
 import { SolanaWalletModal } from './SolanaWalletModal';
 import { connectEVMWallet, signMessage } from '../utils/evmWallet';
 import { connectSolanaWallet, signSolanaMessage } from '../utils/solanaWallet';
@@ -207,6 +207,20 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
 
     try {
       setClaimingProvider(provider);
+      
+      // 1.5. Check balance
+      if (publicKey) {
+        const balance = await checkBalance(wallet, publicKey);
+        if (balance < MIN_BALANCE_REQUIRED) {
+          throw new Error(
+            `Insufficient balance. You have ${balance / 1000000} credits, ` + 
+            `but need at least ${MIN_BALANCE_REQUIRED / 1000000} credits to pay for transaction fees. ` + 
+            `Please fund your wallet at https://faucet.aleo.org`
+          );
+        }
+        console.log(`[Claim Points] Balance check passed: ${balance / 1000000} credits`);
+      }
+
       console.log(`[Claim Points] Claiming ${points} pts for ${provider}`);
       console.log(`[Claim Points] Transaction Inputs: [${platformId}u8, ${commitment}, ${pointsU64}]`);
       console.log(`[Claim Points] Program ID: ${PROGRAM_ID}`);

@@ -12,7 +12,7 @@ import { useWallet } from '@demox-labs/aleo-wallet-adapter-react';
 import { Transaction, WalletAdapterNetwork } from '@demox-labs/aleo-wallet-adapter-base';
 import { PROGRAM_ID } from '../deployed_program';
 import { providerToPlatformId } from '../utils/platformMapping';
-import { requestTransactionWithRetry, requestRecordsWithRetry } from '../utils/walletUtils';
+import { requestTransactionWithRetry, requestRecordsWithRetry, checkBalance, MIN_BALANCE_REQUIRED } from '../utils/walletUtils';
 
 interface WalletAdapterExtras {
   requestTransaction?: (tx: Transaction) => Promise<string>;
@@ -162,6 +162,19 @@ export const useClaimPoints = () => {
       const platformId = providerToPlatformId(provider);
       if (platformId === 0) {
         throw new Error(`Unsupported provider: ${provider}`);
+      }
+
+      // 1.5. Check balance
+      if (wallet && publicKey) {
+        const balance = await checkBalance(wallet, publicKey);
+        if (balance < MIN_BALANCE_REQUIRED) {
+          throw new Error(
+            `Insufficient balance. You have ${balance / 1000000} credits, ` + 
+            `but need at least ${MIN_BALANCE_REQUIRED / 1000000} credits to pay for transaction fees. ` + 
+            `Please fund your wallet at https://faucet.aleo.org`
+          );
+        }
+        console.log(`[ClaimPoints] Balance check passed: ${balance / 1000000} credits`);
       }
 
       // 2. Get passport record

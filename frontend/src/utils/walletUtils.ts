@@ -4,6 +4,8 @@ const WALLET_TIMEOUT = 30_000;
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 2_000;
 
+export const MIN_BALANCE_REQUIRED = 1000000; // 1 Aleo credit = 1000000 microcredits
+
 export interface WalletCallOptions {
   timeout?: number;
   maxRetries?: number;
@@ -99,3 +101,28 @@ export async function decryptWithRetry(
     options
   );
 }
+
+export const checkBalance = async (wallet: any, publicKey: string) => {
+  try {
+    // Get balance via API
+    const response = await fetch(
+      `https://api.explorer.provable.com/v1/testnetbeta/address/${publicKey}/balance`
+    );
+     
+    if (!response.ok) {
+      throw new Error('Failed to fetch balance');
+    }
+     
+    const data = await response.json();
+    const balance = data.balance || 0;
+     
+    console.log('[Balance Check] Current balance:', balance);
+    return balance;
+     
+  } catch (error) {
+    console.error('[Balance Check] Error:', error);
+    // Return 0 on error to be safe, or maybe allow if API fails but user knows they have funds?
+    // Better to be safe and return 0, prompting user to check/fund.
+    return 0;
+  }
+};
