@@ -289,6 +289,8 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
         setClaimingProvider(null);
         return;
       }
+      const useRecord = !!passportRecord;
+      console.log(`[Claim Points] Using ${useRecord ? 'record (record1...)' : 'plaintext'} for passport input`);
 
       const platformId = providerToPlatformId(provider);
       if (platformId === 0) {
