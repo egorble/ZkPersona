@@ -9,6 +9,7 @@
 
 import { WalletAdapterNetwork } from "@demox-labs/aleo-wallet-adapter-base";
 import { PROGRAM_ID } from "../deployed_program";
+import { fieldToString } from "./aleo";
 
 const network = WalletAdapterNetwork.TestnetBeta;
 

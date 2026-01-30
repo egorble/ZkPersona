@@ -28,20 +28,18 @@ const PORT = process.env.PORT || 3001;
 // CORS: Allow frontend origin (production or development)
 const allowedOrigins = [
   process.env.FRONTEND_URL,
+  'https://zk-persona.vercel.app',
+  'https://zkpersona.vercel.app',
   'http://localhost:5173',
   'https://localhost:5173'
 ].filter(Boolean);
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    if (origin.endsWith('.vercel.app')) return callback(null, true);
+    callback(null, false);
   },
   credentials: true
 }));

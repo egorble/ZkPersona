@@ -61,3 +61,39 @@ export async function requestTransactionWithRetry(
     { ...options }
   );
 }
+
+/** Request records with timeout and retry (pattern from tipzo). */
+export async function requestRecordsWithRetry(
+  adapter: { requestRecords?: (programId: string) => Promise<unknown[]> },
+  programId: string,
+  options: WalletCallOptions = {}
+): Promise<unknown[]> {
+  return withWalletTimeout(
+    async () => {
+      if (!adapter?.requestRecords) {
+        throw new Error("Wallet adapter does not support requestRecords");
+      }
+      const records = await adapter.requestRecords(programId);
+      return records ?? [];
+    },
+    options
+  );
+}
+
+/** Decrypt record with timeout and retry (pattern from tipzo). */
+export async function decryptWithRetry(
+  adapter: { decrypt?: (ciphertext: string) => Promise<unknown> },
+  ciphertext: string,
+  options: WalletCallOptions = {}
+): Promise<string> {
+  return withWalletTimeout(
+    async () => {
+      if (!adapter?.decrypt) {
+        throw new Error("Wallet adapter does not support decrypt");
+      }
+      const decrypted = await adapter.decrypt(ciphertext);
+      return typeof decrypted === "string" ? decrypted : JSON.stringify(decrypted);
+    },
+    options
+  );
+}

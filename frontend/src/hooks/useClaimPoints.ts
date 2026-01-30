@@ -12,6 +12,7 @@ import { useWallet } from '@demox-labs/aleo-wallet-adapter-react';
 import { Transaction, WalletAdapterNetwork } from '@demox-labs/aleo-wallet-adapter-base';
 import { PROGRAM_ID } from '../deployed_program';
 import { providerToPlatformId } from '../utils/platformMapping';
+import { requestTransactionWithRetry } from '../utils/walletUtils';
 
 interface WalletAdapterExtras {
   requestTransaction?: (tx: Transaction) => Promise<string>;
@@ -119,8 +120,8 @@ export const useClaimPoints = () => {
         }
       }
 
-      // 4. Convert points to u64 format
-      const pointsU64 = `${Math.round(points * 10)}u64`; // Multiply by 10 for decimal precision
+      // 4. Convert points to u64 format (contract expects whole points, e.g. 80u64)
+      const pointsU64 = `${Math.round(points)}u64`;
 
       console.log('[ClaimPoints] Claiming points:', {
         provider,
@@ -144,9 +145,9 @@ export const useClaimPoints = () => {
         1_000_000
       );
 
-      // 6. Request transaction from wallet
+      // 6. Request transaction from wallet (with retry like usePassport / tipzo)
       console.log('[ClaimPoints] Requesting transaction...');
-      const txId = await adapter.requestTransaction(transaction);
+      const txId = await requestTransactionWithRetry(adapter, transaction, { timeout: 30_000, maxRetries: 3 });
 
       console.log('[ClaimPoints] ✅ Transaction submitted:', txId);
       setLastClaimTxId(txId);

@@ -55,7 +55,7 @@ const handleAuthStart = async (req, res, provider, authHandler) => {
     if (error.message.includes('not configured') || error.message.includes('CLIENT_ID')) {
       return res.status(400).json({ 
         error: error.message,
-        hint: `Please configure ${provider.toUpperCase()}_CLIENT_ID and ${provider.toUpperCase()}_CLIENT_SECRET in backend/.env file. See .env.example for details.`
+        hint: `Set ${provider.toUpperCase()}_CLIENT_ID and ${provider.toUpperCase()}_CLIENT_SECRET in your deployment environment (e.g. Railway → Variables, or backend/.env for local). See README Discord OAuth setup.`
       });
     }
     

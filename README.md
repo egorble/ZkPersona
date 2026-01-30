@@ -93,6 +93,30 @@ npm run dev
 npm run build
 ```
 
+### Discord OAuth (production / Railway)
+
+To enable Discord verification when the backend runs on Railway:
+
+1. **Discord Developer Portal**
+   - Go to [Discord Developer Portal](https://discord.com/developers/applications) → your app (or create one).
+   - **OAuth2 → Redirects**: add  
+     `https://zkpersona-production.up.railway.app/auth/discord/callback`  
+     (or your Railway backend URL + `/auth/discord/callback`).
+   - Copy **Client ID** and **Client Secret**.
+
+2. **Railway**
+   - Open your backend service → **Variables**.
+   - Add:
+     - `DISCORD_CLIENT_ID` = your Discord Client ID  
+     - `DISCORD_CLIENT_SECRET` = your Discord Client Secret  
+   - Also set `BACKEND_URL` and `FRONTEND_URL` if not already (e.g.  
+     `BACKEND_URL` = `https://zkpersona-production.up.railway.app`,  
+     `FRONTEND_URL` = `https://zk-persona.vercel.app`).
+   - Redeploy the backend so the new variables are applied.
+
+3. **Local**
+   - Use `backend/.env` with `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` (and `BACKEND_URL` / `FRONTEND_URL` as needed).
+
 ## Testing
 
 ### Unit Tests

@@ -50,7 +50,7 @@ export const initClientAndGetAuthUrl = async (sessionId, callbackOverride) => {
   const { DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, REDIRECT_URI } = getDiscordConfig();
   
   if (!DISCORD_CLIENT_ID || !DISCORD_CLIENT_SECRET) {
-    throw new Error('DISCORD_CLIENT_ID or DISCORD_CLIENT_SECRET not configured. Please add these to backend/.env file.');
+    throw new Error('DISCORD_CLIENT_ID or DISCORD_CLIENT_SECRET not configured. Set them in Railway Variables (or backend/.env for local). See README.');
   }
 
   const redirectUri = callbackOverride || REDIRECT_URI;
@@ -114,7 +114,7 @@ export const requestAccessToken = async (code) => {
   try {
     // Validate credentials before making request
     if (!DISCORD_CLIENT_ID || !DISCORD_CLIENT_SECRET) {
-      throw new Error('DISCORD_CLIENT_ID or DISCORD_CLIENT_SECRET is missing');
+      throw new Error('DISCORD_CLIENT_ID or DISCORD_CLIENT_SECRET not configured. Set them in Railway Variables (or backend/.env for local).');
     }
     
     // Discord requires form-urlencoded format

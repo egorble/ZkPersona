@@ -1,5 +1,6 @@
 import { useWallet } from "@demox-labs/aleo-wallet-adapter-react";
 import { useState, useCallback } from "react";
+import { requestRecordsWithRetry, decryptWithRetry } from "../utils/walletUtils";
 
 export interface PassportRecord {
     owner: string;
@@ -92,51 +93,42 @@ export const useWalletRecords = () => {
                 }
             }
             
-            // Fallback: try requestRecords (encrypted)
+            // Fallback: try requestRecords (encrypted) with retry (pattern from tipzo)
             if (records.length === 0 && adapter.requestRecords) {
                 try {
-                    // requestRecords may need different parameters
-                    const encryptedRecords = await adapter.requestRecords(programId);
+                    const encryptedRecords = await requestRecordsWithRetry(adapter, programId, { timeout: 30_000, maxRetries: 3 });
                     if (encryptedRecords && encryptedRecords.length > 0) {
                         console.log(`✅ [PassportRecords] Fetched ${encryptedRecords.length} encrypted records`);
-                        // Try to decrypt if decrypt method available
                         if (adapter.decrypt) {
                             const decryptedRecords: Array<{ id?: string; plaintext: string }> = [];
                             for (const record of encryptedRecords) {
                                 try {
+                                    let ciphertext: string | null = null;
                                     if (typeof record === "string" && record.startsWith("record1")) {
-                                        const decrypted = await adapter.decrypt(record);
-                                        if (typeof decrypted === "string") {
-                                            decryptedRecords.push({ plaintext: decrypted });
-                                        } else {
-                                            decryptedRecords.push({ plaintext: JSON.stringify(decrypted) });
-                                        }
+                                        ciphertext = record;
                                     } else if (typeof record === "object" && record !== null) {
                                         const obj = record as Record<string, unknown>;
-                                        const ciphertext =
+                                        ciphertext =
                                             (typeof obj.ciphertext === "string" && obj.ciphertext) ||
                                             (typeof obj.record === "string" && obj.record) ||
                                             "";
-                                        if (ciphertext && ciphertext.startsWith("record1")) {
-                                            const decrypted = await adapter.decrypt(ciphertext);
-                                            decryptedRecords.push({
-                                                id: typeof obj.id === "string" ? obj.id : undefined,
-                                                plaintext: typeof decrypted === "string" ? decrypted : JSON.stringify(decrypted),
-                                            });
-                                        }
+                                    }
+                                    if (ciphertext && ciphertext.startsWith("record1")) {
+                                        const decrypted = await decryptWithRetry(adapter, ciphertext, { timeout: 15_000 });
+                                        decryptedRecords.push({
+                                            id: typeof record === "object" && record !== null && "id" in record && typeof (record as any).id === "string" ? (record as any).id : undefined,
+                                            plaintext: typeof decrypted === "string" ? decrypted : decrypted,
+                                        });
                                     }
                                 } catch (decryptErr) {
                                     console.warn("[PassportRecords] Failed to decrypt record:", decryptErr);
                                 }
                             }
                             records = decryptedRecords;
-                            if (records.length > 0) {
-                                setHasPermission(true);
-                            }
+                            if (records.length > 0) setHasPermission(true);
                         }
                     }
                 } catch (error: any) {
-                    // INVALID_PARAMS is expected - don't log
                     if (!error?.message?.includes("INVALID_PARAMS")) {
                         console.debug("[PassportRecords] requestRecords failed:", error?.message || error);
                     }
@@ -191,37 +183,32 @@ export const useWalletRecords = () => {
                 }
             }
             
-            // Fallback: try requestRecords (encrypted)
+            // Fallback: try requestRecords (encrypted) with retry (pattern from tipzo)
             if (records.length === 0 && adapter.requestRecords) {
                 try {
-                    const encryptedRecords = await adapter.requestRecords(programId);
+                    const encryptedRecords = await requestRecordsWithRetry(adapter, programId, { timeout: 30_000, maxRetries: 3 });
                     if (encryptedRecords && encryptedRecords.length > 0) {
                         console.log(`✅ [UserStampRecords] Fetched ${encryptedRecords.length} encrypted records`);
-                        // Try to decrypt if decrypt method available
                         if (adapter.decrypt) {
                             const decryptedRecords: Array<{ id?: string; plaintext: string }> = [];
                             for (const record of encryptedRecords) {
                                 try {
+                                    let ciphertext: string | null = null;
                                     if (typeof record === "string" && record.startsWith("record1")) {
-                                        const decrypted = await adapter.decrypt(record);
-                                        if (typeof decrypted === "string") {
-                                            decryptedRecords.push({ plaintext: decrypted });
-                                        } else {
-                                            decryptedRecords.push({ plaintext: JSON.stringify(decrypted) });
-                                        }
+                                        ciphertext = record;
                                     } else if (typeof record === "object" && record !== null) {
                                         const obj = record as Record<string, unknown>;
-                                        const ciphertext =
+                                        ciphertext =
                                             (typeof obj.ciphertext === "string" && obj.ciphertext) ||
                                             (typeof obj.record === "string" && obj.record) ||
                                             "";
-                                        if (ciphertext && ciphertext.startsWith("record1")) {
-                                            const decrypted = await adapter.decrypt(ciphertext);
-                                            decryptedRecords.push({
-                                                id: typeof obj.id === "string" ? obj.id : undefined,
-                                                plaintext: typeof decrypted === "string" ? decrypted : JSON.stringify(decrypted),
-                                            });
-                                        }
+                                    }
+                                    if (ciphertext && ciphertext.startsWith("record1")) {
+                                        const decrypted = await decryptWithRetry(adapter, ciphertext, { timeout: 15_000 });
+                                        decryptedRecords.push({
+                                            id: typeof record === "object" && record !== null && "id" in record && typeof (record as any).id === "string" ? (record as any).id : undefined,
+                                            plaintext: typeof decrypted === "string" ? decrypted : decrypted,
+                                        });
                                     }
                                 } catch (decryptErr) {
                                     console.warn("[UserStampRecords] Failed to decrypt record:", decryptErr);
@@ -231,7 +218,6 @@ export const useWalletRecords = () => {
                         }
                     }
                 } catch (error: any) {
-                    // INVALID_PARAMS is expected - don't log
                     if (!error?.message?.includes("INVALID_PARAMS")) {
                         console.debug("[UserStampRecords] requestRecords failed:", error?.message || error);
                     }
