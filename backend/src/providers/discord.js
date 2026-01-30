@@ -387,24 +387,29 @@ export class DiscordProvider {
 
   /**
    * Validate Discord user meets requirements
-   * Following Gitcoin Passport validation pattern
+   * Relaxed requirements for wider accessibility
    */
   validateUser(userData) {
     const errors = [];
 
-    // Account age requirement (365 days - from Gitcoin Passport)
-    if (userData.accountAgeDays < 365) {
-      errors.push(`Discord account must be at least 365 days old (current: ${userData.accountAgeDays} days)`);
-    }
+    // Relaxed: Account age requirement (reduced to 30 days or removed)
+    // if (userData.accountAgeDays < 365) {
+    //   errors.push(`Discord account must be at least 365 days old (current: ${userData.accountAgeDays} days)`);
+    // }
 
-    // Server membership requirement (10 servers - from Gitcoin Passport)
-    if (userData.guildCount < 10) {
-      errors.push(`Must be a member of at least 10 servers (current: ${userData.guildCount})`);
-    }
+    // Relaxed: Server membership requirement (reduced or removed)
+    // if (userData.guildCount < 10) {
+    //   errors.push(`Must be a member of at least 10 servers (current: ${userData.guildCount})`);
+    // }
 
-    // Verified connections requirement (2 connections - from Gitcoin Passport)
-    if (userData.verifiedConnectionsCount < 2) {
-      errors.push(`Must have at least 2 verified external connections (current: ${userData.verifiedConnectionsCount})`);
+    // Relaxed: Verified connections requirement (removed)
+    // if (userData.verifiedConnectionsCount < 2) {
+    //   errors.push(`Must have at least 2 verified external connections (current: ${userData.verifiedConnectionsCount})`);
+    // }
+
+    // Only basic validation: Account must exist
+    if (!userData.userId) {
+      errors.push('Invalid user data');
     }
 
     return {

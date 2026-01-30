@@ -75,20 +75,25 @@ export const solanaCallback = async (query, session) => {
   // Verify Solana signature (basic validation - in production use @solana/web3.js)
   // For now, we'll trust the frontend signature and verify wallet data
   
-  // Fetch wallet data from Solscan API
-  let walletData;
+  // Fetch wallet data from Solscan API (optional, non-blocking)
+  let walletData = {
+    address,
+    balanceSol: 0,
+    txCount: 0,
+    walletAgeYears: 0,
+    hasRecentActivity: false
+  };
+
   try {
-    walletData = await fetchSolanaWalletData(address);
+    // Only fetch if SOLSCAN_API_KEY is configured, otherwise skip to avoid errors
+    if (process.env.SOLSCAN_API_KEY) {
+       walletData = await fetchSolanaWalletData(address);
+    } else {
+       console.log('[Solana] SOLSCAN_API_KEY not set, using default wallet data (score will be based on connection only)');
+    }
   } catch (fetchError) {
     console.error('[Solana] Error fetching wallet data:', fetchError.message);
     // Continue with default values if fetch fails
-    walletData = {
-      address,
-      balanceSol: 0,
-      txCount: 0,
-      walletAgeYears: 0,
-      hasRecentActivity: false
-    };
   }
   
   // No minimum balance check – verification always allowed; scoring uses balance for points only.
