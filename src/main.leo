@@ -351,7 +351,56 @@ program zkpersona_passport_v5.aleo {
         assert(stamp.points == points);
     }
 
-    // ГОЛОВНА ФУНКЦІЯ: Claim штампу за соцмережу
+    // ПРОСТА ФУНКЦІЯ: Зареєструвати верифікацію без passport (просто commitment)
+    async transition register_verification(
+        public platform_id: u8,
+        private social_commitment: field
+    ) -> Future {
+        return finalize_register_verification(social_commitment, platform_id, self.caller);
+    }
+
+    async function finalize_register_verification(
+        commitment: field,
+        platform_id: u8,
+        user: address
+    ) {
+        // 1. Перевірка: чи commitment вже використаний?
+        let default_binding: SocialBinding = SocialBinding {
+            commitment: 0field,
+            platform_id: 0u8,
+            claimed_at: 0u64,
+            is_active: false,
+        };
+        
+        let existing: SocialBinding = Mapping::get_or_use(
+            social_commitments,
+            commitment,
+            default_binding
+        );
+        
+        // Якщо is_active == true, значить вже використаний
+        assert(!existing.is_active);
+
+        // 2. Зберігаємо commitment як зайнятий
+        let now: u64 = 0u64;
+        let binding: SocialBinding = SocialBinding {
+            commitment: commitment,
+            platform_id: platform_id,
+            claimed_at: now,
+            is_active: true,
+        };
+        
+        Mapping::set(social_commitments, commitment, binding);
+
+        // 3. Перевірка: чи user вже claim цю платформу (запобігає подвійному claim)
+        let user_platform_hash: field = hash_user_platform(user, platform_id);
+        let already_claimed: bool = Mapping::get_or_use(user_platform_claims, user_platform_hash, false);
+        assert(!already_claimed);
+        
+        Mapping::set(user_platform_claims, user_platform_hash, true);
+    }
+
+    // ГОЛОВНА ФУНКЦІЯ: Claim штампу за соцмережу (з passport - для legacy)
     async transition claim_social_stamp(
         private passport: Passport,
         public platform_id: u8,
