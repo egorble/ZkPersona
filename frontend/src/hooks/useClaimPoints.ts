@@ -12,7 +12,7 @@ import { useWallet } from '@demox-labs/aleo-wallet-adapter-react';
 import { Transaction, WalletAdapterNetwork } from '@demox-labs/aleo-wallet-adapter-base';
 import { PROGRAM_ID } from '../deployed_program';
 import { providerToPlatformId } from '../utils/platformMapping';
-import { requestTransactionWithRetry } from '../utils/walletUtils';
+import { requestTransactionWithRetry, requestRecordsWithRetry } from '../utils/walletUtils';
 
 interface WalletAdapterExtras {
   requestTransaction?: (tx: Transaction) => Promise<string>;
@@ -50,7 +50,9 @@ export const useClaimPoints = () => {
     }
 
     try {
-      const records = await adapter.requestRecords(PROGRAM_ID);
+      // Use retry utility for better reliability
+      const records = await requestRecordsWithRetry(adapter, PROGRAM_ID, { timeout: 30_000, maxRetries: 3 }) as any[];
+      
       if (!records || records.length === 0) {
         console.warn('[ClaimPoints] No records found in wallet');
         return null;

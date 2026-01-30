@@ -9,6 +9,7 @@
 import { useWallet } from "@demox-labs/aleo-wallet-adapter-react";
 import { useState, useCallback } from "react";
 import { PROGRAM_ID } from "../deployed_program";
+import { requestRecordsWithRetry } from "../utils/walletUtils";
 
 export interface StampRecord {
     // We don't expose private fields here
@@ -65,7 +66,7 @@ export const useStampRecords = () => {
             // Fallback: try encrypted records
             if (records.length === 0 && adapter.requestRecords) {
                 try {
-                    const encrypted = await adapter.requestRecords(PROGRAM_ID);
+                    const encrypted = await requestRecordsWithRetry(adapter, PROGRAM_ID, { timeout: 30_000, maxRetries: 3 }) as any[];
                     if (encrypted && Array.isArray(encrypted)) {
                         records = encrypted.map((r: any) => ({
                             recordId: typeof r === 'object' && r?.id ? r.id : undefined,

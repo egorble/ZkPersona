@@ -73,6 +73,7 @@ export async function requestRecordsWithRetry(
       if (!adapter?.requestRecords) {
         throw new Error("Wallet adapter does not support requestRecords");
       }
+      console.log(`[WalletUtils] requestRecords for programId: ${programId}`);
       const records = await adapter.requestRecords(programId);
       return records ?? [];
     },

@@ -516,7 +516,7 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
                       // keep modal open so user can retry
                     }
                   }}
-                  disabled={claimingProvider === successModalProvider || initContractInProgress || !publicKey || !res}
+                  disabled={claimingProvider === successModalProvider || !publicKey || !res}
                   className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-white text-black font-mono uppercase text-sm font-semibold hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {claimingProvider === successModalProvider ? (

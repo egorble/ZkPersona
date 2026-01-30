@@ -10,6 +10,7 @@
 import { useWallet } from "@demox-labs/aleo-wallet-adapter-react";
 import { useState, useCallback } from "react";
 import { PROGRAM_ID } from "../deployed_program";
+import { requestRecordsWithRetry } from "../utils/walletUtils";
 
 export interface PassportRecord {
     // We don't expose private fields here
@@ -78,7 +79,7 @@ export const usePassportRecords = () => {
             // Fallback: try encrypted records
             if (records.length === 0 && adapter.requestRecords && publicKey) {
                 try {
-                    const encrypted = await adapter.requestRecords(PROGRAM_ID);
+                    const encrypted = await requestRecordsWithRetry(adapter, PROGRAM_ID, { timeout: 30_000, maxRetries: 3 }) as any[];
                     if (encrypted && Array.isArray(encrypted)) {
                         records = encrypted.map((r: any) => ({
                             recordId: typeof r === 'object' && r?.id ? r.id : undefined,
@@ -115,7 +116,7 @@ export const usePassportRecords = () => {
         try {
             // Try requestRecords first (returns ciphertexts which Transaction.createTransaction needs)
             if (adapter.requestRecords) {
-                const enc = await adapter.requestRecords(PROGRAM_ID);
+                const enc = await requestRecordsWithRetry(adapter, PROGRAM_ID, { timeout: 30_000, maxRetries: 3 }) as any[];
                 if (enc && Array.isArray(enc)) {
                     // Collect all ciphertexts first
                     const ciphertexts: string[] = [];
