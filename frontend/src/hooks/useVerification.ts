@@ -25,9 +25,6 @@ export interface VerificationState {
     status?: 'connected' | 'disconnected' | 'expired';
     daysRemaining?: number;
     expiryDate?: string;
-    /** Set after successful on-chain claim; prevents double claim */
-    claimedTxId?: string;
-    claimedAt?: number;
   };
 }
 
@@ -274,31 +271,6 @@ export const useVerification = (walletAddress?: string) => {
     }
   }, [verifications, walletAddress]);
 
-  /** Mark provider as claimed (on-chain) to prevent double claim. Persists to localStorage. */
-  const markProviderClaimed = useCallback(
-    (providerId: string, txId: string) => {
-      const existing = verifications[providerId];
-      if (!existing) return;
-
-      const updated = {
-        ...verifications,
-        [providerId]: { ...existing, claimedTxId: txId, claimedAt: Date.now() },
-      };
-      setVerifications(updated);
-
-      if (walletAddress) {
-        try {
-          const storageKey = `verifications_${walletAddress}`;
-          localStorage.setItem(storageKey, JSON.stringify(updated));
-        } catch {
-          /* ignore */
-        }
-      }
-      window.dispatchEvent(new Event('verification-updated'));
-    },
-    [verifications, walletAddress]
-  );
-
   return {
     verifications,
     verifying,
@@ -308,8 +280,7 @@ export const useVerification = (walletAddress?: string) => {
     getTotalScore,
     getVerification,
     clearVerification,
-    refreshVerifications,
-    markProviderClaimed,
+    refreshVerifications
   };
 };
 

@@ -15,15 +15,7 @@ export interface PassportRecord {
     // We don't expose private fields here
     // Records are opaque - only wallet can decrypt
     recordId?: string;
-    plaintext?: string;  // Decrypted Leo record format
-}
-
-/** For claim_social_stamp the wallet expects a record (encrypted "record1..."), not plaintext. */
-export interface PassportRecordForClaim {
-    /** Encrypted record (record1...) — use this as transition input when present */
-    record: string | null;
-    /** Decrypted plaintext — fallback only if record not available */
-    plaintext: string | null;
+    plaintext?: string;  // Encrypted Leo record format
 }
 
 /**
@@ -108,65 +100,8 @@ export const usePassportRecords = () => {
         }
     }, [publicKey, adapter]);
 
-    /**
-     * Get Passport record for claim_social_stamp.
-     * Prefers the encrypted record (record1...) — wallet expects "record type", not plaintext.
-     * Falls back to plaintext when only requestRecordPlaintexts is available.
-     */
-    const requestPassportRecordForClaim = useCallback(async (): Promise<PassportRecordForClaim> => {
-        if (!publicKey || !adapter) {
-            return { record: null, plaintext: null };
-        }
-
-        const hasPassport = (s: string) =>
-            typeof s === "string" && s.includes("total_stamps") && s.includes("humanity_score");
-
-        try {
-            if (adapter.requestRecords && adapter.decrypt) {
-                const encrypted = await adapter.requestRecords(PROGRAM_ID);
-                if (encrypted && Array.isArray(encrypted)) {
-                    for (const r of encrypted) {
-                        let ciphertext = "";
-                        if (typeof r === "string" && r.startsWith("record1")) {
-                            ciphertext = r;
-                        } else if (r && typeof r === "object") {
-                            const o = r as { record?: string; ciphertext?: string };
-                            ciphertext = (o.ciphertext || o.record) || "";
-                        }
-                        if (!ciphertext || !ciphertext.startsWith("record1")) continue;
-                        try {
-                            const dec = await adapter.decrypt(ciphertext);
-                            const pt = typeof dec === "string" ? dec : JSON.stringify(dec);
-                            if (hasPassport(pt)) {
-                                return { record: ciphertext, plaintext: pt };
-                            }
-                        } catch {
-                            /* skip */
-                        }
-                    }
-                }
-            }
-
-            if (adapter.requestRecordPlaintexts) {
-                const arr = await adapter.requestRecordPlaintexts(PROGRAM_ID);
-                if (arr && Array.isArray(arr)) {
-                    for (const r of arr) {
-                        const pt = typeof r === "string" ? r : (r?.plaintext ?? "");
-                        if (typeof pt === "string" && hasPassport(pt)) {
-                            return { record: null, plaintext: pt };
-                        }
-                    }
-                }
-            }
-        } catch (e) {
-            console.warn("[PassportRecords] requestPassportRecordForClaim:", (e as Error)?.message);
-        }
-        return { record: null, plaintext: null };
-    }, [publicKey, adapter]);
-
     return {
         requestPassportRecords,
-        requestPassportRecordForClaim,
         loading,
         error,
     };
