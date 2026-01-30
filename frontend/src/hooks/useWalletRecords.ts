@@ -76,7 +76,9 @@ export const useWalletRecords = () => {
             if (adapter.requestRecordPlaintexts) {
                 try {
                     // Try with programId only first
-                    records = await adapter.requestRecordPlaintexts(programId);
+                    records = await adapter.requestRecordPlaintexts({
+                        program: programId
+                    });
                     if (records && records.length > 0) {
                         setHasPermission(true);
                         console.log(`✅ [PassportRecords] Fetched ${records.length} records via requestRecordPlaintexts`);
@@ -172,7 +174,9 @@ export const useWalletRecords = () => {
             // Try requestRecordPlaintexts first (requires OnChainHistory permission)
             if (adapter.requestRecordPlaintexts) {
                 try {
-                    records = await adapter.requestRecordPlaintexts(programId);
+                    records = await adapter.requestRecordPlaintexts({
+                        program: programId
+                    });
                     if (records && records.length > 0) {
                         console.log(`✅ [UserStampRecords] Fetched ${records.length} records via requestRecordPlaintexts`);
                     }
