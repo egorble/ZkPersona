@@ -11,6 +11,8 @@ export interface TransactionData {
     timestamp: number;
     type: string;
     status: string;
+    /** Raw status from API; use to detect failed/rejected (don't mark claim as success) */
+    statusRaw?: string;
     program?: string;
     function?: string;
     functionName?: string; // Original function name from contract (e.g., "claim_social_stamp", "claim_point")
@@ -270,12 +272,14 @@ export const fetchTransactionDetails = async (
         
         const functionName = extractFunctionName(data);
         const programId = data.program_id || data.program || "";
+        const statusRaw = data.status;
         
         return {
             txId: data.id || data.transaction_id || txId,
             timestamp: data.timestamp || Date.now(),
             type: data.type || "unknown",
             status: data.status || "confirmed",
+            statusRaw,
             program: programId,
             function: functionName, // Original function name from contract
             functionName: functionName, // Alias for consistency

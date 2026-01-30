@@ -341,38 +341,49 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
       });
       console.log(`[Claim Points] Successfully claimed ${result.score} points for ${provider}. Transaction ID: ${txId}`);
 
-      // Verify tx used our program (when explorer-compatible tx id) before marking claimed
-      let shouldMarkClaimed = true;
-      if (typeof txId === 'string' && txId.startsWith('at')) {
+      // Verify tx: our program, our function, and confirmed (not failed) before marking claimed
+      let shouldMarkClaimed = false;
+      const txIdStr = String(txId);
+      const canVerifyViaExplorer = txIdStr.startsWith('at');
+
+      if (canVerifyViaExplorer) {
         try {
-          const details = await fetchTransactionDetailsFromAnyExplorer(txId);
+          const details = await fetchTransactionDetailsFromAnyExplorer(txIdStr);
           const programOk = details?.program && String(details.program).toLowerCase().includes('zkpersona');
           const fnOk = details?.functionName === 'claim_social_stamp';
-          if (details && (!programOk || !fnOk)) {
-            shouldMarkClaimed = false;
+          const failed = !details || !programOk || !fnOk
+            || !details.statusRaw
+            || /failed|rejected|reverted|error/i.test(details.statusRaw);
+          if (!failed) {
+            shouldMarkClaimed = true;
+          } else if (details && (!programOk || !fnOk)) {
             console.warn('[Claim Points] Tx may not use our program:', { program: details?.program, function: details?.functionName });
+          } else if (!details) {
+            console.warn('[Claim Points] Tx not found in explorer (not in block or failed). Do not mark claimed.');
           }
         } catch {
-          /* still mark claimed if we can't verify */
+          console.warn('[Claim Points] Could not verify tx via explorer. Do not mark claimed.');
         }
+      } else {
+        console.warn('[Claim Points] Tx id is not explorer format (at...). Cannot verify. Do not mark claimed.');
       }
 
       if (shouldMarkClaimed) {
-        markProviderClaimed(provider, txId);
+        markProviderClaimed(provider, txIdStr);
       }
 
-      const explorerUrl = `https://testnet.explorer.provable.com/transaction/${txId}`;
-      const msg = txId.startsWith('at')
-        ? `Points claimed!\n\nProvider: ${provider}\nPoints: ${result.score}\n\nTransaction: ${txId.slice(0, 12)}...\n\nOpen in explorer: ${explorerUrl}`
+      const explorerUrl = `https://testnet.explorer.provable.com/transaction/${txIdStr}`;
+      const successMsg = canVerifyViaExplorer
+        ? `Points claimed!\n\nProvider: ${provider}\nPoints: ${result.score}\n\nTransaction: ${txIdStr.slice(0, 12)}...\n\nOpen in explorer: ${explorerUrl}`
         : `Points claimed!\n\nProvider: ${provider}\nPoints: ${result.score}\n\nIf the transaction doesn't appear in the explorer, open Leo Wallet → Transaction history and open the transaction there to get the real tx id.`;
       if (!shouldMarkClaimed) {
         alert(
-          'Transaction was sent but it may not have used the zkPersona contract. Please check the transaction in the explorer. You can try claiming again once confirmed.'
+          'The transaction was sent but we could not confirm it succeeded (not in block, failed, or wrong contract).\n\nCheck the transaction in the explorer. You can try "Claim Points" again.'
         );
       } else {
-        alert(msg);
+        alert(successMsg);
       }
-      if (typeof txId === 'string' && txId.startsWith('at')) {
+      if (canVerifyViaExplorer) {
         window.open(explorerUrl, '_blank');
       }
 

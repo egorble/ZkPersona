@@ -249,8 +249,8 @@ export const checkAdminStatus = async (address: string): Promise<boolean> => {
 };
 
 // Get all stamp metadata (public definitions only)
-// If program not deployed / mapping 404, return [] after first failed request to avoid console spam.
-const MAX_STAMP_IDS = 64;
+// Contract initialize() creates stamps 1..9 only. Cap at 9 to avoid 404 on stamps/10.
+const MAX_STAMP_IDS = 9;
 
 export const getAllStamps = async (): Promise<PublicStamp[]> => {
     const stamps: PublicStamp[] = [];
