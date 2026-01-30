@@ -105,12 +105,17 @@ export async function decryptWithRetry(
 export const checkBalance = async (wallet: any, publicKey: string) => {
   try {
     // Get balance via API
+    // Note: Explorer API might be unstable, so we log error but return 0
     const response = await fetch(
       `https://api.explorer.provable.com/v1/testnetbeta/address/${publicKey}/balance`
     );
      
     if (!response.ok) {
-      throw new Error('Failed to fetch balance');
+      console.warn('[Balance Check] Failed to fetch balance from API (404/500). Assuming user might have funds if this is a fresh wallet.');
+      // If API fails (404 usually means address not found/no transactions), 
+      // but user says they have tokens, we should probably NOT block them?
+      // Or we assume 0. Let's return -1 to indicate "unknown" so we can handle it gracefully.
+      return -1; 
     }
      
     const data = await response.json();
@@ -121,8 +126,6 @@ export const checkBalance = async (wallet: any, publicKey: string) => {
      
   } catch (error) {
     console.error('[Balance Check] Error:', error);
-    // Return 0 on error to be safe, or maybe allow if API fails but user knows they have funds?
-    // Better to be safe and return 0, prompting user to check/fund.
-    return 0;
+    return -1; // Unknown balance
   }
 };

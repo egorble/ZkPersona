@@ -134,10 +134,10 @@ const Header = ({
             {balance !== undefined && (
                <div className="hidden md:flex flex-col items-end mr-2">
                  <span className="font-mono text-xs text-neutral-400">Balance</span>
-                 <span className={`font-mono text-sm font-bold ${balance < MIN_BALANCE_REQUIRED ? 'text-red-500' : 'text-white'}`}>
-                   {(balance / 1000000).toFixed(2)} Credits
+                 <span className={`font-mono text-sm font-bold ${balance !== -1 && balance < MIN_BALANCE_REQUIRED ? 'text-red-500' : 'text-white'}`}>
+                   {balance === -1 ? 'Unknown' : `${(balance / 1000000).toFixed(2)} Credits`}
                  </span>
-                 {balance < MIN_BALANCE_REQUIRED && (
+                 {balance !== -1 && balance < MIN_BALANCE_REQUIRED && (
                     <a href="https://faucet.aleo.org" target="_blank" className="text-[10px] text-red-400 hover:underline">
                       Get Testnet Tokens
                     </a>

@@ -167,14 +167,20 @@ export const useClaimPoints = () => {
       // 1.5. Check balance
       if (wallet && publicKey) {
         const balance = await checkBalance(wallet, publicKey);
-        if (balance < MIN_BALANCE_REQUIRED) {
+        // Only block if we are SURE balance is 0. If -1 (unknown/API error), let it pass (wallet will handle error).
+        if (balance !== -1 && balance < MIN_BALANCE_REQUIRED) {
           throw new Error(
             `Insufficient balance. You have ${balance / 1000000} credits, ` + 
             `but need at least ${MIN_BALANCE_REQUIRED / 1000000} credits to pay for transaction fees. ` + 
             `Please fund your wallet at https://faucet.aleo.org`
           );
         }
-        console.log(`[ClaimPoints] Balance check passed: ${balance / 1000000} credits`);
+        
+        if (balance === -1) {
+            console.warn('[ClaimPoints] Could not verify balance (API error). Proceeding anyway...');
+        } else {
+            console.log(`[ClaimPoints] Balance check passed: ${balance / 1000000} credits`);
+        }
       }
 
       // 2. Get passport record
