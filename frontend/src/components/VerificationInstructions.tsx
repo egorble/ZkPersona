@@ -213,7 +213,7 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
 
       const transaction = Transaction.createTransaction(
         publicKey,
-        WalletAdapterNetwork.TestnetBeta,
+        WalletAdapterNetwork.Testnet,
         PROGRAM_ID,
         'claim_verification',
         [`${platformId}u8`, commitment, pointsU64],
