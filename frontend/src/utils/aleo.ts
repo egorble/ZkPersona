@@ -85,8 +85,9 @@ export const hashString = async (str: string): Promise<string> => {
 // Generate random nonce for passport (client-side)
 // Used for nullifier generation - ensures privacy and prevents replay
 export const generateRandomNonce = (): string => {
-    // Generate random 32-byte value
-    const randomBytes = new Uint8Array(32);
+    // Generate random 16-byte value (128 bits) to fit safely in a field element
+    // Field is ~253 bits, but we use 128 bits for simplicity and safety
+    const randomBytes = new Uint8Array(16);
     crypto.getRandomValues(randomBytes);
     
     // Convert to BigInt
@@ -95,7 +96,7 @@ export const generateRandomNonce = (): string => {
         val = (val << BigInt(8)) | BigInt(randomBytes[i]);
     }
     
-    // Return as field format
-    return val.toString() + "field";
+    // Return as u128 format (or field if needed, but u128 is safer for nonces)
+    return val.toString() + "u128";
 };
 

@@ -31,8 +31,9 @@ export async function withWalletTimeout<T>(
       lastError = e instanceof Error ? e : new Error(String(e));
       const msg = lastError.message;
 
+      // Handle specific error messages
       if (/user rejected|user cancelled/i.test(msg)) throw lastError;
-      if (/INVALID_PARAMS|invalid parameters/i.test(msg)) throw lastError;
+      // if (/INVALID_PARAMS|invalid parameters/i.test(msg)) throw lastError; // Retry on INVALID_PARAMS as it might be temporary network/wallet issue
 
       if (options.onRetry && attempt > 1) options.onRetry(attempt);
       if (attempt === maxRetries) {

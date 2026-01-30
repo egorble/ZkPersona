@@ -51,7 +51,26 @@ export const useClaimPoints = () => {
 
     try {
       // Use retry utility for better reliability
-      const records = await requestRecordsWithRetry(adapter, PROGRAM_ID, { timeout: 30_000, maxRetries: 3 }) as any[];
+      // Note: We use the program ID without address prefix for records request if the full ID fails
+      let records: any[] = [];
+      try {
+        console.log(`[ClaimPoints] Requesting records for ${PROGRAM_ID}`);
+        records = await requestRecordsWithRetry(adapter, PROGRAM_ID, { timeout: 30_000, maxRetries: 3 }) as any[];
+      } catch (err) {
+        // Fallback: try just the program name if the full ID failed
+        const shortProgramName = PROGRAM_ID.split('.').slice(1).join('.');
+        if (shortProgramName && shortProgramName !== PROGRAM_ID) {
+           console.log(`[ClaimPoints] Retrying with short program name: ${shortProgramName}`);
+           try {
+             records = await requestRecordsWithRetry(adapter, shortProgramName, { timeout: 30_000, maxRetries: 3 }) as any[];
+           } catch (e) {
+             console.warn('[ClaimPoints] Failed with short program name too');
+             throw err;
+           }
+        } else {
+           throw err;
+        }
+      }
       
       if (!records || records.length === 0) {
         console.warn('[ClaimPoints] No records found in wallet');
@@ -172,24 +191,23 @@ export const useClaimPoints = () => {
         points: pointsU64
       });
 
-      // 5. Create transaction for claim_point (all sensitive inputs private; author/platform/points encrypted on-chain)
+      // 5. Create transaction
       const transaction = Transaction.createTransaction(
         publicKey,
-        network,
+        WalletAdapterNetwork.TestnetBeta, // Explicitly use TestnetBeta
         PROGRAM_ID,
-        'claim_point',
-        [
-          passportRecord,
-          `${platformId}u8`,
-          formattedCommitment,
-          pointsU64
-        ],
-        1_000_000
+        'claim_verification',
+        [`${platformId}u8`, commitment, pointsU64],
+        50_000, // fee
+        false // private fee
       );
 
       // 6. Request transaction from wallet (with retry like usePassport / tipzo)
       console.log('[ClaimPoints] Requesting transaction...');
-      const txId = await requestTransactionWithRetry(adapter, transaction, { timeout: 30_000, maxRetries: 3 });
+      console.log(`[ClaimPoints] Program: ${PROGRAM_ID}, Function: claim_verification`);
+      console.log(`[ClaimPoints] Inputs: [${platformId}u8, ${commitment}, ${pointsU64}]`);
+      
+      const txId = await requestTransactionWithRetry(adapter, transaction, { timeout: 60_000, maxRetries: 3 });
 
       console.log('[ClaimPoints] ✅ Transaction submitted:', txId);
       setLastClaimTxId(txId);
