@@ -716,12 +716,11 @@ export const VERIFICATION_CONFIGS: Record<string, VerificationConfig> = {
   },
   discord: {
     provider: 'Discord',
-    maxScore: 7.8, // 2.8 base + 5 bonus for Aleo server
+    maxScore: 2.8,
     criteria: [
       { condition: 'Account exists', points: 1.0, description: 'Active Discord account' },
       { condition: 'Email verified', points: 0.8, description: 'Email address is confirmed' },
-      { condition: '≥ 5 server memberships', points: 1.0, description: 'Active Discord user' },
-      { condition: 'Aleo Official Server', points: 5.0, description: 'Member of official Aleo blockchain Discord server' }
+      { condition: '≥ 5 server memberships', points: 1.0, description: 'Active Discord user' }
     ],
     checkFunction: verifyDiscord
   },
