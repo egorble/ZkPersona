@@ -35,7 +35,7 @@ export class AleoSDKVerifier {
             /*
             import { Aleo } from "@aleo/sdk";
             const aleo = new Aleo({
-                network: "testnet3",
+                network: "testnetbeta",
             });
             this.verifier = aleo.verifier();
             */

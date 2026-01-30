@@ -280,15 +280,44 @@ router.get('/telegram/start', async (req, res) => {
     <h1>🔐 Telegram Verification</h1>
     <p>Follow these steps:</p>
     <ol>
-      <li>Click <strong>Open Telegram Bot</strong> below (opens in a new tab).</li>
+      <li>Click <strong>Open Telegram Bot</strong> below.</li>
       <li>In Telegram, tap <strong>Start</strong> or send <strong>/start</strong> to the bot.</li>
-      <li>The bot will send you a message with a link — click <strong>Complete Verification</strong> in that message.</li>
-      <li>Return to the main site tab to see your result.</li>
+      <li><strong>Wait here!</strong> This window will close automatically when verification is complete.</li>
     </ol>
-    <p><strong>Note:</strong> The bot must have its webhook configured to this backend. If you see no reply from the bot, ask the admin to set the Telegram webhook (see backend README).</p>
     <a href="${authUrl}" target="_blank" rel="noopener" class="btn">Open Telegram Bot</a>
     <button type="button" onclick="window.close()">Close this window</button>
   </div>
+  <script>
+    (function() {
+      const sessionId = '${sessionId}';
+      const checkStatus = async () => {
+        try {
+          const response = await fetch('/auth/telegram/status?session=' + sessionId);
+          const data = await response.json();
+          if (data && (data.verified || data.status === 'verified')) {
+            // Success! Send message to opener and close
+            if (window.opener && !window.opener.closed) {
+              const result = {
+                score: data.score || 0,
+                commitment: data.commitment || '',
+                criteria: data.criteria || []
+              };
+              window.opener.postMessage({ type: 'oauth-complete', provider: 'telegram', result: result }, '*');
+              window.close();
+            } else {
+              // Fallback if opener is lost
+              document.querySelector('.box').innerHTML = '<h1>✅ Verification Complete</h1><p>You can close this window and return to the app.</p>';
+            }
+          }
+        } catch (e) {
+          console.error('Polling error:', e);
+        }
+      };
+      
+      // Poll every 2 seconds
+      setInterval(checkStatus, 2000);
+    })();
+  </script>
 </body></html>
     `);
   } catch (err) {

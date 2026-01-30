@@ -3,7 +3,7 @@
 import { PROGRAM_ID } from "../deployed_program";
 
 const EXPLORER_API_BASE = "https://api.explorer.aleo.org/v1";
-const EXPLORER_TESTNET3_URL = `${EXPLORER_API_BASE}/testnet3`;
+const EXPLORER_TESTNET3_URL = `${EXPLORER_API_BASE}/testnetbeta`;
 const PROVABLE_TESTNET_API = "https://api.explorer.provable.com/v1/testnet";
 
 export interface TransactionData {
@@ -249,7 +249,7 @@ export const fetchTransactionDetails = async (
     try {
         const explorerUrl = network === "testnet"
             ? PROVABLE_TESTNET_API
-            : network === "testnet3"
+            : network === "testnetbeta"
             ? EXPLORER_TESTNET3_URL
             : `${EXPLORER_API_BASE}/${network}`;
 

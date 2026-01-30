@@ -164,6 +164,33 @@ export const useVerification = (walletAddress?: string) => {
     window.dispatchEvent(new Event('verification-updated'));
   }, [verifications, saveVerifications, walletAddress]);
 
+  // Mark verification as claimed (remove commitment so claim button disappears)
+  const markAsClaimed = useCallback((providerId: string) => {
+    if (!verifications[providerId]) return;
+
+    const updated = {
+      ...verifications,
+      [providerId]: {
+        ...verifications[providerId],
+        commitment: undefined, // Remove commitment to hide claim button
+        status: 'connected' as const
+      }
+    };
+
+    saveVerifications(updated);
+
+    if (walletAddress) {
+      try {
+        const storageKey = `verifications_${walletAddress}`;
+        localStorage.setItem(storageKey, JSON.stringify(updated));
+      } catch {
+        // Ignore storage errors
+      }
+    }
+    
+    window.dispatchEvent(new Event('verification-updated'));
+  }, [verifications, saveVerifications, walletAddress]);
+
   const verifyProvider = useCallback(async (
     providerId: string,
     credentials: { accessToken?: string; address?: string; answers?: string[]; signature?: string; score?: number; criteria?: Array<{ condition: string; points: number; description: string }> }
@@ -280,7 +307,8 @@ export const useVerification = (walletAddress?: string) => {
     getTotalScore,
     getVerification,
     clearVerification,
-    refreshVerifications
+    refreshVerifications,
+    markAsClaimed
   };
 };
 

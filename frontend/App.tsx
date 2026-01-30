@@ -64,13 +64,13 @@ const INITIAL_STAMPS: Stamp[] = [
     provider: 'discord'
   },
   {
-    id: 'twitter',
-    title: 'Twitter',
-    description: 'Verify your Twitter (X) account. Account must be at least 30 days old.',
-    icon: <Twitter size={24} />,
+    id: 'telegram',
+    title: 'Telegram',
+    description: 'Verify your Telegram account: username, profile photo, and account age.',
+    icon: <MessageCircle size={24} />,
     scoreWeight: 10,
     status: StampStatus.LOCKED,
-    provider: 'twitter'
+    provider: 'telegram'
   },
   {
     id: 'solana',

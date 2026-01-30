@@ -352,6 +352,14 @@ export const initiateOAuth = async (providerId: string, redirectUri: string): Pr
     params.append('code_challenge_method', 'S256');
   }
 
+  // Handle Telegram special case (redirect to backend to generate bot link)
+  if (providerId === 'telegram') {
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+    // Remove trailing slash if present
+    const cleanBackendUrl = backendUrl.replace(/\/$/, '');
+    return `${cleanBackendUrl}/auth/telegram?walletId=${walletId}`;
+  }
+
   return `${provider.authUrl}?${params.toString()}`;
 };
 

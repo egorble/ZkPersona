@@ -8,6 +8,7 @@ import verifyRoutes from './routes/verify.js';
 import walletRoutes from './routes/wallet.js';
 import configRoutes from './routes/config.js';
 import { initDatabase, closeDatabase } from './database/index.js';
+import { initTelegramBot } from './services/telegramBot.js';
 
 // Get directory name for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -76,7 +77,14 @@ app.get('/health', (req, res) => {
 });
 
 // Initialize database connection
-initDatabase().catch(err => {
+initDatabase().then(async () => {
+  // Initialize Telegram Bot (Polling mode for dev)
+  try {
+    await initTelegramBot();
+  } catch (err) {
+    console.error('[Server] Telegram Bot initialization failed:', err);
+  }
+}).catch(err => {
   console.error('[Server] Database initialization failed:', err);
 });
 

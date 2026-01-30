@@ -201,7 +201,7 @@ export const TransactionStatus: React.FC<TransactionStatusProps> = ({
                     rel="noopener noreferrer"
                     className="text-sm text-neutral-400 hover:text-neutral-300 flex items-center gap-2 font-mono underline"
                   >
-                    View on Aleo Explorer (testnet3)
+                    View on Aleo Explorer (testnetbeta)
                     <ExternalLink size={14} />
                   </a>
                 </div>

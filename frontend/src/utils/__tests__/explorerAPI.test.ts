@@ -102,11 +102,11 @@ describe('explorerAPI', () => {
       expect(url).toContain('tx1');
     });
 
-    it('should return correct URL for testnet3', () => {
-      const url = getTransactionUrl('tx1', 'testnet3');
+    it('should return correct URL for testnetbeta', () => {
+      const url = getTransactionUrl('tx1', 'testnetbeta');
       expect(url).toContain('explorer.aleo.org');
       expect(url).toContain('tx1');
-      expect(url).toContain('testnet3');
+      expect(url).toContain('testnetbeta');
     });
 
     it('should return correct URL for mainnet', () => {

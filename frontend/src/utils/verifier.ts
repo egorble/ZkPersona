@@ -14,7 +14,7 @@ export class PassportProofVerifier {
     private programId: string;
     private network: string;
 
-    constructor(programId: string = PROGRAM_ID, network: string = "testnet3") {
+    constructor(programId: string = PROGRAM_ID, network: string = "testnetbeta") {
         this.programId = programId;
         this.network = network;
     }

@@ -61,9 +61,8 @@ export const usePassportRecords = () => {
 
             if (adapter.requestRecordPlaintexts) {
                 try {
-                    const plaintexts = await adapter.requestRecordPlaintexts({
-                        program: PROGRAM_ID
-                    });
+                    console.log(`[PassportRecords] Requesting records for program: ${PROGRAM_ID}`);
+                    const plaintexts = await adapter.requestRecordPlaintexts(PROGRAM_ID);
                     if (plaintexts && Array.isArray(plaintexts)) {
                         records = plaintexts.map((r: any) => ({
                             recordId: r.id,

@@ -96,8 +96,8 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
       return;
     }
 
-    // Handle OAuth providers (Discord, Twitter) - Popup flow
-    if (['discord', 'twitter'].includes(stampId)) {
+    // Handle OAuth providers (Discord, Twitter, Telegram) - Popup flow
+    if (['discord', 'twitter', 'telegram'].includes(stampId)) {
       try {
         setIsVerifying(stampId);
         setIsLoading(true);
@@ -213,7 +213,7 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
 
       const transaction = Transaction.createTransaction(
         publicKey,
-        WalletAdapterNetwork.Testnet,
+        WalletAdapterNetwork.TestnetBeta,
         PROGRAM_ID,
         'claim_verification',
         [`${platformId}u8`, commitment, pointsU64],
@@ -241,6 +241,10 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
         delete next[provider];
         return next;
       });
+      
+      // Update persistent storage to mark as claimed (removes commitment)
+      markAsClaimed(provider);
+      
       setClaimingProvider(null);
     } catch (error: any) {
       console.error(`[Claim Points] Failed for ${provider}:`, error?.message || error);
@@ -357,51 +361,34 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
                         </div>
                       )}
                       {/* Single card: verified state and/or claim points (no duplicate blocks) */}
-                      {(verification?.verified || verificationResults[stampId]) && (
+                      {/* Only show Green Box if CLAIM is possible (and not just verified status) */}
+                      {(verification?.verified || verificationResults[stampId]) && 
+                       ['twitter', 'solana', 'discord', 'telegram'].includes(stampId) && 
+                       (verification?.commitment || verificationResults[stampId]?.commitment) && (
                         <div className="mt-2 p-3 bg-green-950/30 border border-green-800/50 rounded">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-green-400 font-mono text-sm flex items-center gap-1.5">
-                              <Check size={14} className="shrink-0" />
-                              Verified
-                            </span>
-                            <span className="text-green-400 font-bold font-mono">
-                              {(verificationResults[stampId]?.score ?? verification?.score) ?? 0} / {config?.maxScore || 35} pts
-                            </span>
-                          </div>
-                          {((verificationResults[stampId]?.criteria ?? verification?.criteria) || []).length > 0 && (
-                            <div className="mt-2 space-y-1">
-                              {((verificationResults[stampId]?.criteria ?? verification?.criteria) || []).map((criterion: { condition: string; points: number }, idx: number) => (
-                                <div key={idx} className="text-xs text-green-300 font-mono flex items-center gap-1.5">
-                                  <span className="text-green-500">-</span>
-                                  {criterion.condition}: +{criterion.points} pts
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {['twitter', 'solana', 'discord'].includes(stampId) && (verification?.commitment || verificationResults[stampId]?.commitment) && (
-                            <>
-                              <div className="mt-3 p-2 bg-green-900/20 border border-green-700/30 rounded text-xs text-green-300 font-mono">
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                             <div className="text-xs text-green-300 font-mono">
                                 Claim points to add them to your wallet on-chain.
                               </div>
-                              <button
-                                onClick={() => handleClaimPoints(stampId)}
-                                disabled={claimingProvider === stampId || !publicKey}
-                                className="mt-3 w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-neutral-800 disabled:text-neutral-400 text-white font-mono uppercase text-sm flex items-center justify-center gap-2"
-                              >
-                                {claimingProvider === stampId ? (
-                                  <>
-                                    <Loader2 size={14} className="animate-spin" />
-                                    Claiming...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Coins size={14} />
-                                    Claim Points
-                                  </>
-                                )}
-                              </button>
-                            </>
-                          )}
+                          </div>
+                          
+                          <button
+                            onClick={() => handleClaimPoints(stampId)}
+                            disabled={claimingProvider === stampId || !publicKey}
+                            className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-neutral-800 disabled:text-neutral-400 text-white font-mono uppercase text-sm flex items-center justify-center gap-2"
+                          >
+                            {claimingProvider === stampId ? (
+                              <>
+                                <Loader2 size={14} className="animate-spin" />
+                                Claiming...
+                              </>
+                            ) : (
+                              <>
+                                <Coins size={14} />
+                                Claim Points
+                              </>
+                            )}
+                          </button>
                         </div>
                       )}
                     </div>
@@ -478,7 +465,9 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
       {/* Success modal: "Connected successfully" + Claim points button (no auto-claim) */}
       {successModalProvider && (() => {
         const res = verificationResults[successModalProvider];
-        const name = successModalProvider === 'discord' ? 'Discord' : successModalProvider === 'twitter' ? 'Twitter' : 'Solana';
+        const name = successModalProvider === 'discord' ? 'Discord' : 
+                     successModalProvider === 'twitter' ? 'Twitter' : 
+                     successModalProvider === 'telegram' ? 'Telegram' : 'Solana';
         return (
           <div
             className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80"

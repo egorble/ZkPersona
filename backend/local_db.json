@@ -341,6 +341,96 @@
         "createdAt": "2026-01-29T17:21:16.620Z",
         "expiresAt": "2026-01-29T18:21:16.620Z"
       }
+    ],
+    [
+      "discord_b6d65317-6aff-4c8e-a9f6-372cb6b6919a",
+      {
+        "sessionId": "discord_b6d65317-6aff-4c8e-a9f6-372cb6b6919a",
+        "provider": "discord",
+        "userId": "aleo1e46vlesnaw2gvl99ln9zedjeanmus6swzkk93w5568ne5yux95psdngyst",
+        "status": "pending",
+        "stateData": {
+          "walletId": "aleo1e46vlesnaw2gvl99ln9zedjeanmus6swzkk93w5568ne5yux95psdngyst",
+          "status": "in_progress"
+        },
+        "createdAt": "2026-01-30T14:15:16.485Z",
+        "expiresAt": "2026-01-30T15:15:16.485Z"
+      }
+    ],
+    [
+      "discord_9211b345-4d0d-41ed-a5a8-f857256aa725",
+      {
+        "sessionId": "discord_9211b345-4d0d-41ed-a5a8-f857256aa725",
+        "provider": "discord",
+        "userId": "aleo1e46vlesnaw2gvl99ln9zedjeanmus6swzkk93w5568ne5yux95psdngyst",
+        "status": "pending",
+        "stateData": {
+          "walletId": "aleo1e46vlesnaw2gvl99ln9zedjeanmus6swzkk93w5568ne5yux95psdngyst",
+          "status": "in_progress"
+        },
+        "createdAt": "2026-01-30T14:19:31.453Z",
+        "expiresAt": "2026-01-30T15:19:31.453Z"
+      }
+    ],
+    [
+      "discord_7f90794b-bb69-44b1-881c-2e54b80e6161",
+      {
+        "sessionId": "discord_7f90794b-bb69-44b1-881c-2e54b80e6161",
+        "provider": "discord",
+        "userId": "aleo1e46vlesnaw2gvl99ln9zedjeanmus6swzkk93w5568ne5yux95psdngyst",
+        "status": "pending",
+        "stateData": {
+          "walletId": "aleo1e46vlesnaw2gvl99ln9zedjeanmus6swzkk93w5568ne5yux95psdngyst",
+          "status": "in_progress"
+        },
+        "createdAt": "2026-01-30T14:28:26.489Z",
+        "expiresAt": "2026-01-30T15:28:26.489Z"
+      }
+    ],
+    [
+      "discord_a3417c74-c8aa-43b1-96b0-933cff1a0fd9",
+      {
+        "sessionId": "discord_a3417c74-c8aa-43b1-96b0-933cff1a0fd9",
+        "provider": "discord",
+        "userId": "aleo1e46vlesnaw2gvl99ln9zedjeanmus6swzkk93w5568ne5yux95psdngyst",
+        "status": "pending",
+        "stateData": {
+          "walletId": "aleo1e46vlesnaw2gvl99ln9zedjeanmus6swzkk93w5568ne5yux95psdngyst",
+          "status": "in_progress"
+        },
+        "createdAt": "2026-01-30T14:50:20.674Z",
+        "expiresAt": "2026-01-30T15:50:20.674Z"
+      }
+    ],
+    [
+      "telegram_19379235-f83c-4b91-a649-41e856cee496",
+      {
+        "sessionId": "telegram_19379235-f83c-4b91-a649-41e856cee496",
+        "provider": "telegram",
+        "userId": "aleo1e46vlesnaw2gvl99ln9zedjeanmus6swzkk93w5568ne5yux95psdngyst",
+        "status": "pending",
+        "stateData": {
+          "walletId": "aleo1e46vlesnaw2gvl99ln9zedjeanmus6swzkk93w5568ne5yux95psdngyst",
+          "status": "in_progress"
+        },
+        "createdAt": "2026-01-30T15:12:52.374Z",
+        "expiresAt": "2026-01-30T16:12:52.374Z"
+      }
+    ],
+    [
+      "telegram_dfa0439b-fe28-4840-a63c-c22d865ea1fc",
+      {
+        "sessionId": "telegram_dfa0439b-fe28-4840-a63c-c22d865ea1fc",
+        "provider": "telegram",
+        "userId": "aleo1e46vlesnaw2gvl99ln9zedjeanmus6swzkk93w5568ne5yux95psdngyst",
+        "status": "pending",
+        "stateData": {
+          "walletId": "aleo1e46vlesnaw2gvl99ln9zedjeanmus6swzkk93w5568ne5yux95psdngyst",
+          "status": "in_progress"
+        },
+        "createdAt": "2026-01-30T15:25:34.998Z",
+        "expiresAt": "2026-01-30T16:25:34.998Z"
+      }
     ]
   ],
   "profiles": []
