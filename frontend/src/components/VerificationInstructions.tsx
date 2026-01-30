@@ -36,7 +36,8 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
   const adapter = wallet?.adapter as any;
   const network = WalletAdapterNetwork.TestnetBeta;
   const { verifications, verifying, getVerification, saveVerificationResult } = useVerification(publicKey || undefined);
-  // Passport не потрібен для claim - видалено
+  const { requestPassportRecords, requestPassportRecordForClaim } = usePassportRecords();
+  const { createPassport } = usePassport();
   const [connectingWallet, setConnectingWallet] = useState<string | null>(null);
   const [connectedWalletInfo, setConnectedWalletInfo] = useState<{ address: string; provider: string } | null>(null);
   const [showWalletRequiredModal, setShowWalletRequiredModal] = useState(false);
@@ -51,6 +52,7 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
   const [isLoading, setIsLoading] = useState(false);
   const [successModalProvider, setSuccessModalProvider] = useState<string | null>(null);
   const [initContractInProgress, setInitContractInProgress] = useState(false);
+  const setupInProgressRef = useRef(false);
 
   // Load connected wallet info on mount and when modal opens
   useEffect(() => {
@@ -126,7 +128,8 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
         
         console.log(`[Verification] Successfully verified ${stampId}. Score: ${result.score}, Commitment: ${result.commitment}`);
         console.log(`[Verification] Result saved to persistent storage`);
-        setSuccessModalProvider(stampId);
+        const setupOk = await ensureClaimSetup();
+        if (setupOk) setSuccessModalProvider(stampId);
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         const errorStack = error instanceof Error ? error.stack : undefined;
@@ -177,7 +180,50 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
     onStartVerification(stampId);
   };
 
-  // Всі функції passport setup видалено - не потрібні для простого claim
+  const byClaimRecord = (r: any) => {
+    const pt = typeof r === 'string' ? r : (r?.plaintext ?? '');
+    return String(pt).includes('total_stamps');
+  };
+
+  const getClaimRecordPlaintext = async (): Promise<string | null> => {
+    const records = await requestPassportRecords();
+    const rec = records.find(byClaimRecord);
+    if (!rec) return null;
+    return typeof rec === 'string' ? rec : (rec.plaintext ?? JSON.stringify(rec));
+  };
+
+  const ensureClaimSetup = async (): Promise<string | null> => {
+    let records = await requestPassportRecords();
+    let rec = records.find(byClaimRecord);
+    if (!rec) {
+      if (setupInProgressRef.current) {
+        for (let i = 0; i < 15; i++) {
+          await new Promise((r) => setTimeout(r, 800));
+          const plain = await getClaimRecordPlaintext();
+          if (plain) return plain;
+        }
+        return null;
+      }
+      try {
+        setupInProgressRef.current = true;
+        await createPassport();
+        await new Promise((r) => setTimeout(r, 2500));
+        records = await requestPassportRecords();
+        rec = records.find(byClaimRecord);
+      } catch (e: any) {
+        console.warn('[Setup] Setup tx failed:', e?.message);
+        return null;
+      } finally {
+        setupInProgressRef.current = false;
+      }
+    }
+    if (!rec) return null;
+    return typeof rec === 'string' ? rec : (rec.plaintext ?? JSON.stringify(rec));
+  };
+
+  const ensureClaimRecordAndClaim = async (): Promise<string | null> => {
+    return ensureClaimSetup();
+  };
 
   // Claim Points - Manual only (user clicks button in success modal or grid)
   // Use verificationResults (popup flow) or getVerification (Telegram/Solana via VerifyCallback)
@@ -220,21 +266,83 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
       setClaimingProvider(provider);
       console.log(`[Claim Points] Starting claim for provider: ${provider}, score: ${result.score}`);
 
+      if (!fromSuccessModal) {
+        const ok = await ensureClaimRecordAndClaim();
+        if (!ok) {
+          alert('Could not complete claim. Please try again.');
+          setClaimingProvider(null);
+          return;
+        }
+      } else {
+        const have = await getClaimRecordPlaintext();
+        if (!have) {
+          alert('Setup required. Please complete the one-time wallet step first.');
+          setClaimingProvider(null);
+          return;
+        }
+      }
+
+      const { record: passportRecord, plaintext: passportPlaintext } = await requestPassportRecordForClaim();
+      const passportInput = passportRecord ?? passportPlaintext;
+      if (!passportInput) {
+        alert('Could not get passport record for claim. Please try again.');
+        setClaimingProvider(null);
+        return;
+      }
+      const useRecord = !!passportRecord;
+      console.log(`[Claim Points] Using ${useRecord ? 'record (record1...)' : 'plaintext'} for passport input`);
+
       const platformId = providerToPlatformId(provider);
       if (platformId === 0) {
         throw new Error(`Unsupported provider: ${provider}`);
       }
 
+      const stamps = await getAllStamps();
+      let stamp = stamps.find((s) => s.platform_id === platformId && s.is_active);
+      if (!stamp && stamps.length === 0 && publicKey && adapter?.requestTransaction) {
+        const runInit = window.confirm(
+          "Contract not initialized yet. Run one-time setup? (You will sign one transaction to create default stamps.)"
+        );
+        if (runInit) {
+          setInitContractInProgress(true);
+          try {
+            const initTx = Transaction.createTransaction(
+              publicKey,
+              network,
+              PROGRAM_ID,
+              "initialize",
+              [publicKey],
+              50_000,
+              false
+            );
+            await requestTransactionWithRetry(adapter, initTx, { timeout: 30_000, maxRetries: 2 });
+            await new Promise((r) => setTimeout(r, 2000));
+            const stampsAfter = await getAllStamps();
+            stamp = stampsAfter.find((s) => s.platform_id === platformId && s.is_active);
+          } finally {
+            setInitContractInProgress(false);
+          }
+        }
+      }
+      if (!stamp) {
+        throw new Error(
+          stamps.length === 0
+            ? "Contract not initialized. Run one-time setup (sign initialize transaction) and try again."
+            : `No stamp for ${provider} (platform_id ${platformId}).`
+        );
+      }
+
       let commitment = result.commitment;
       if (!commitment.endsWith('field')) commitment = commitment + 'field';
+      const pointsU64 = `${stamp.points}u64`;
 
-      // register_verification: просто реєструємо commitment (без passport)
+      // claim_social_stamp — звичайний клейм поінтів (passport + commitment + stamp)
       const transaction = Transaction.createTransaction(
         publicKey,
         network,
         PROGRAM_ID,
-        "register_verification",
-        [`${platformId}u8`, commitment],
+        "claim_social_stamp",
+        [passportInput, `${platformId}u8`, commitment, `${stamp.stamp_id}u32`, pointsU64],
         50_000,
         false
       );
@@ -754,7 +862,9 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
             setCurrentWalletId(null);
             setConnectingWallet(null);
             setIsLoading(false);
-            setSuccessModalProvider('solana');
+
+            const setupOk = await ensureClaimSetup();
+            if (setupOk) setSuccessModalProvider('solana');
           } catch (error: any) {
             const errorMsg = error.message || 'Unknown error';
             const isConnectionError = errorMsg.includes('connection refused') || 
