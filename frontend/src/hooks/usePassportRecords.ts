@@ -109,13 +109,16 @@ export const usePassportRecords = () => {
     const hasPassport = (s: string) =>
         typeof s === "string" && s.includes("total_stamps") && s.includes("humanity_score");
 
-    /** Get Passport for claim_social_stamp. Prefer record (record1...); fallback plaintext. */
+    /** Get Passport for claim_social_stamp. Returns record (record1... ciphertext) which Transaction expects. */
     const requestPassportRecordForClaim = useCallback(async (): Promise<PassportRecordForClaim> => {
         if (!publicKey || !adapter) return { record: null, plaintext: null };
         try {
-            if (adapter.requestRecords && adapter.decrypt) {
+            // Try requestRecords first (returns ciphertexts which Transaction.createTransaction needs)
+            if (adapter.requestRecords) {
                 const enc = await adapter.requestRecords(PROGRAM_ID);
                 if (enc && Array.isArray(enc)) {
+                    // Collect all ciphertexts first
+                    const ciphertexts: string[] = [];
                     for (const r of enc) {
                         let cipher = "";
                         if (typeof r === "string" && r.startsWith("record1")) cipher = r;
@@ -123,21 +126,48 @@ export const usePassportRecords = () => {
                             const o = r as { record?: string; ciphertext?: string };
                             cipher = (o.ciphertext || o.record) || "";
                         }
-                        if (!cipher || !cipher.startsWith("record1")) continue;
-                        try {
-                            const dec = await adapter.decrypt(cipher);
-                            const pt = typeof dec === "string" ? dec : JSON.stringify(dec);
-                            if (hasPassport(pt)) return { record: cipher, plaintext: pt };
-                        } catch { /* skip */ }
+                        if (cipher && cipher.startsWith("record1")) {
+                            ciphertexts.push(cipher);
+                        }
+                    }
+                    
+                    // Try to identify passport by decrypting (if decrypt available)
+                    if (adapter.decrypt && ciphertexts.length > 0) {
+                        for (const cipher of ciphertexts) {
+                            try {
+                                const dec = await adapter.decrypt(cipher);
+                                const pt = typeof dec === "string" ? dec : JSON.stringify(dec);
+                                if (hasPassport(pt)) {
+                                    console.log('[PassportRecords] Found passport record (verified via decrypt)');
+                                    return { record: cipher, plaintext: pt };
+                                }
+                            } catch (decErr) {
+                                // Decrypt failed - continue to next
+                                console.debug('[PassportRecords] Decrypt failed for record, continuing...');
+                            }
+                        }
+                    }
+                    
+                    // If decrypt not available or all decrypts failed, return first ciphertext
+                    // (assume it's the passport - user likely has only one passport record)
+                    if (ciphertexts.length > 0) {
+                        console.log('[PassportRecords] Returning first record ciphertext (decrypt unavailable or failed)');
+                        return { record: ciphertexts[0], plaintext: null };
                     }
                 }
             }
-            if (adapter.requestRecordPlaintexts) {
+            
+            // Fallback: requestRecordPlaintexts (but Transaction expects ciphertext, so this will fail)
+            // Only use if requestRecords not available
+            if (!adapter.requestRecords && adapter.requestRecordPlaintexts) {
+                console.warn('[PassportRecords] Using requestRecordPlaintexts fallback - transaction may fail');
                 const arr = await adapter.requestRecordPlaintexts(PROGRAM_ID);
                 if (arr && Array.isArray(arr)) {
                     for (const r of arr) {
                         const pt = typeof r === "string" ? r : (r?.plaintext ?? "");
-                        if (typeof pt === "string" && hasPassport(pt)) return { record: null, plaintext: pt };
+                        if (typeof pt === "string" && hasPassport(pt)) {
+                            return { record: null, plaintext: pt };
+                        }
                     }
                 }
             }

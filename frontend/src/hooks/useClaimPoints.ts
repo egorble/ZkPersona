@@ -16,7 +16,8 @@ import { requestTransactionWithRetry } from '../utils/walletUtils';
 
 interface WalletAdapterExtras {
   requestTransaction?: (tx: Transaction) => Promise<string>;
-  requestRecordPlaintexts?: (programId: string) => Promise<any[]>;
+  requestRecords?: (programId: string) => Promise<any[]>;
+  decrypt?: (ciphertext: string) => Promise<any>;
 }
 
 interface ClaimResult {
@@ -38,37 +39,76 @@ export const useClaimPoints = () => {
   const [error, setError] = useState<string | null>(null);
 
   /**
-   * Get user's passport record from wallet
-   * Returns the first passport record found, or null if none exists
+   * Get user's passport record from wallet (using requestRecords, like tipzo)
+   * Returns CIPHERTEXT (record1...) which Transaction.createTransaction expects for private records
+   * Only decrypts temporarily to verify it's a passport record
    */
   const getPassportRecord = useCallback(async (): Promise<string | null> => {
-    if (!adapter?.requestRecordPlaintexts) {
-      console.warn('[ClaimPoints] Wallet does not support requestRecordPlaintexts');
+    if (!adapter?.requestRecords) {
+      console.warn('[ClaimPoints] Wallet does not support requestRecords');
       return null;
     }
 
     try {
-      const records = await adapter.requestRecordPlaintexts(PROGRAM_ID);
-      
-      // Find passport record (contains 'total_stamps' field)
-      const passportRecord = records?.find((r: any) => {
-        const plaintext = typeof r === 'string' ? r : r.plaintext || JSON.stringify(r);
-        return plaintext.includes('total_stamps') && plaintext.includes('humanity_score');
-      });
-
-      if (passportRecord) {
-        return typeof passportRecord === 'string' 
-          ? passportRecord 
-          : passportRecord.plaintext || JSON.stringify(passportRecord);
-      }
-
-      return null;
-    } catch (err: any) {
-      // Permission denied or no records - this is expected
-      if (err?.message?.includes('INVALID_PARAMS') || err?.message?.includes('permission')) {
+      const records = await adapter.requestRecords(PROGRAM_ID);
+      if (!records || records.length === 0) {
+        console.warn('[ClaimPoints] No records found in wallet');
         return null;
       }
-      console.warn('[ClaimPoints] Error getting passport record:', err?.message);
+
+      console.log(`[ClaimPoints] Checking ${records.length} records for passport...`);
+
+      // Find passport record - return CIPHERTEXT for Transaction.createTransaction
+      for (const record of records) {
+        let ciphertextToReturn: string | null = null;
+        let plaintextToCheck: string | null = null;
+        
+        // Extract ciphertext
+        if (typeof record === 'string' && record.startsWith('record1')) {
+          ciphertextToReturn = record;
+        } else if (typeof record === 'object' && record !== null) {
+          const obj = record as Record<string, unknown>;
+          ciphertextToReturn = 
+            (typeof obj.ciphertext === 'string' && obj.ciphertext) ||
+            (typeof obj.record === 'string' && obj.record) ||
+            (typeof obj.data === 'string' && obj.data) ||
+            '';
+        }
+
+        if (!ciphertextToReturn || !ciphertextToReturn.startsWith('record1')) {
+          continue;
+        }
+
+        // Decrypt to verify it's a passport (but return ciphertext)
+        if (adapter.decrypt) {
+          try {
+            const decrypted = await adapter.decrypt(ciphertextToReturn);
+            plaintextToCheck = typeof decrypted === 'string' ? decrypted : JSON.stringify(decrypted);
+          } catch (decryptErr) {
+            console.warn('[ClaimPoints] Failed to decrypt record:', decryptErr);
+            continue;
+          }
+        } else {
+          // No decrypt - can't verify, skip
+          console.warn('[ClaimPoints] No decrypt method available, skipping record verification');
+          continue;
+        }
+
+        // Check if this is a passport record (has total_stamps and humanity_score)
+        if (plaintextToCheck && plaintextToCheck.includes('total_stamps') && plaintextToCheck.includes('humanity_score')) {
+          console.log('[ClaimPoints] Found passport record (returning ciphertext for transaction)');
+          return ciphertextToReturn; // Return CIPHERTEXT for Transaction.createTransaction
+        }
+      }
+
+      console.warn('[ClaimPoints] No passport record found in wallet records');
+      return null;
+    } catch (err: any) {
+      if (err?.message?.includes('INVALID_PARAMS') || err?.message?.includes('permission')) {
+        console.warn('[ClaimPoints] Permission denied or invalid params');
+        return null;
+      }
+      console.error('[ClaimPoints] Error getting passport record:', err);
       return null;
     }
   }, [adapter]);
