@@ -8,7 +8,6 @@ import { VERIFICATION_CONFIGS } from '../services/verificationService';
 import { useWallet } from '@demox-labs/aleo-wallet-adapter-react';
 import { WalletAdapterNetwork, Transaction } from '@demox-labs/aleo-wallet-adapter-base';
 import { requestTransactionWithRetry } from '../utils/walletUtils';
-import { WalletConnectModal } from './WalletConnectModal';
 import { SolanaWalletModal } from './SolanaWalletModal';
 import { connectEVMWallet, signMessage } from '../utils/evmWallet';
 import { connectSolanaWallet, signSolanaMessage } from '../utils/solanaWallet';
@@ -209,10 +208,12 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
     try {
       setClaimingProvider(provider);
       console.log(`[Claim Points] Claiming ${points} pts for ${provider}`);
+      console.log(`[Claim Points] Transaction Inputs: [${platformId}u8, ${commitment}, ${pointsU64}]`);
+      console.log(`[Claim Points] Program ID: ${PROGRAM_ID}`);
 
       const transaction = Transaction.createTransaction(
         publicKey,
-        network,
+        WalletAdapterNetwork.TestnetBeta,
         PROGRAM_ID,
         'claim_verification',
         [`${platformId}u8`, commitment, pointsU64],
@@ -221,7 +222,7 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
       );
 
       const txId = await requestTransactionWithRetry(adapter, transaction, {
-        timeout: 30_000,
+        timeout: 60_000,
         maxRetries: 3
       });
       console.log(`[Claim Points] Successfully claimed ${result.score} points for ${provider}. Transaction ID: ${txId}`);

@@ -82,9 +82,10 @@ export const useWalletRecords = () => {
                         console.log(`✅ [PassportRecords] Fetched ${records.length} records via requestRecordPlaintexts`);
                     }
                 } catch (error: any) {
+                    // Catch ALL errors from requestRecordPlaintexts to prevent crashes
                     // Silently handle INVALID_PARAMS - this is expected if permission not granted or method signature changed
-                    if (error?.message?.includes("INVALID_PARAMS") || error?.message?.includes("permission")) {
-                        // Don't log this as it's expected behavior
+                    if (error?.message?.includes("INVALID_PARAMS") || error?.message?.includes("permission") || error?.message?.includes("split") || error?.message?.includes("length")) {
+                        // Don't log this as it's expected behavior or known wallet bug
                         setHasPermission(false);
                     } else {
                         // Only log unexpected errors
@@ -129,7 +130,7 @@ export const useWalletRecords = () => {
                         }
                     }
                 } catch (error: any) {
-                    if (!error?.message?.includes("INVALID_PARAMS")) {
+                    if (!error?.message?.includes("INVALID_PARAMS") && !error?.message?.includes("split") && !error?.message?.includes("length")) {
                         console.debug("[PassportRecords] requestRecords failed:", error?.message || error);
                     }
                 }
@@ -177,7 +178,7 @@ export const useWalletRecords = () => {
                     }
                 } catch (error: any) {
                     // INVALID_PARAMS is expected - don't log
-                    if (!error?.message?.includes("INVALID_PARAMS") && !error?.message?.includes("permission")) {
+                    if (!error?.message?.includes("INVALID_PARAMS") && !error?.message?.includes("permission") && !error?.message?.includes("split") && !error?.message?.includes("length")) {
                         console.debug("[UserStampRecords] requestRecordPlaintexts failed:", error?.message || error);
                     }
                 }
@@ -218,7 +219,7 @@ export const useWalletRecords = () => {
                         }
                     }
                 } catch (error: any) {
-                    if (!error?.message?.includes("INVALID_PARAMS")) {
+                    if (!error?.message?.includes("INVALID_PARAMS") && !error?.message?.includes("split") && !error?.message?.includes("length")) {
                         console.debug("[UserStampRecords] requestRecords failed:", error?.message || error);
                     }
                 }
