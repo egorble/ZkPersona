@@ -36,7 +36,7 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
   const adapter = wallet?.adapter as any;
   const network = WalletAdapterNetwork.TestnetBeta;
   const { verifications, verifying, getVerification, saveVerificationResult } = useVerification(publicKey || undefined);
-  const { requestPassportRecords } = usePassportRecords();
+  const { requestPassportRecords, requestPassportRecordForClaim } = usePassportRecords();
   const { createPassport } = usePassport();
   const [connectingWallet, setConnectingWallet] = useState<string | null>(null);
   const [connectedWalletInfo, setConnectedWalletInfo] = useState<{ address: string; provider: string } | null>(null);
@@ -266,12 +266,26 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
       setClaimingProvider(provider);
       console.log(`[Claim Points] Starting claim for provider: ${provider}, score: ${result.score}`);
 
-      const passportPlaintext = fromSuccessModal
-        ? await getClaimRecordPlaintext()
-        : await ensureClaimRecordAndClaim();
-      if (!passportPlaintext) {
-        if (fromSuccessModal) alert('Setup required. Please complete the one-time wallet step first.');
-        else alert('Could not complete claim. Please try again.');
+      if (!fromSuccessModal) {
+        const ok = await ensureClaimRecordAndClaim();
+        if (!ok) {
+          alert('Could not complete claim. Please try again.');
+          setClaimingProvider(null);
+          return;
+        }
+      } else {
+        const have = await getClaimRecordPlaintext();
+        if (!have) {
+          alert('Setup required. Please complete the one-time wallet step first.');
+          setClaimingProvider(null);
+          return;
+        }
+      }
+
+      const { record: passportRecord, plaintext: passportPlaintext } = await requestPassportRecordForClaim();
+      const passportInput = passportRecord ?? passportPlaintext;
+      if (!passportInput) {
+        alert('Could not get passport record for claim. Please try again.');
         setClaimingProvider(null);
         return;
       }
@@ -322,13 +336,13 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
       // Contract requires points to match stamp exactly; use stamp.points (default stamps set in initialize())
       const pointsU64 = `${stamp.points}u64`;
 
-      // claim_social_stamp: registers commitment on-chain and issues stamp record. (private passport, public platform_id, private commitment, public stamp_id, public points)
+      // claim_social_stamp: wallet expects record (record1...) as first input, not plaintext. Use record when available.
       const transaction = Transaction.createTransaction(
         publicKey,
         network,
         PROGRAM_ID,
         "claim_social_stamp",
-        [passportPlaintext, `${platformId}u8`, commitment, `${stamp.stamp_id}u32`, pointsU64],
+        [passportInput, `${platformId}u8`, commitment, `${stamp.stamp_id}u32`, pointsU64],
         50_000,
         false
       );
