@@ -123,10 +123,12 @@ export const initTelegramBot = async () => {
         const isLocalhost = callbackUrl.includes('localhost') || callbackUrl.includes('127.0.0.1');
 
         if (isLocalhost) {
-             await bot.sendMessage(chatId, `🔐 *Verification Successful!*\n\nYou can return to the website now.\n\nLink: ${callbackUrl}`, {
-                parse_mode: 'Markdown'
-             });
-        } else {
+              // Escape underscores for Markdown to prevent parsing errors
+              const safeUrl = callbackUrl.replace(/_/g, '\\_');
+              await bot.sendMessage(chatId, `🔐 *Verification Successful!*\n\nYou can return to the website now.\n\nLink: ${safeUrl}`, {
+                 parse_mode: 'Markdown'
+              });
+         } else {
             await bot.sendMessage(chatId, '🔐 *Verification Successful!*', {
             parse_mode: 'Markdown',
             reply_markup: {

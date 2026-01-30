@@ -18,5 +18,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
-*.swo
 
+# Local Database
+local_db.json
