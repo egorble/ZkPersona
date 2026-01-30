@@ -324,7 +324,7 @@ export const VerificationInstructions: React.FC<VerificationInstructionsProps> =
       // Contract requires points to match stamp exactly; use stamp.points (default stamps set in initialize())
       const pointsU64 = `${stamp.points}u64`;
 
-      // claim_social_stamp: registers commitment on-chain and issues stamp record. (private passport, public platform_id, private commitment, public stamp_id, public points)
+      // claim_social_stamp: (private passport, public platform_id, private commitment, public stamp_id, public points)
       const transaction = Transaction.createTransaction(
         publicKey,
         network,
